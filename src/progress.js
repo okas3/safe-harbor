@@ -126,6 +126,18 @@ export function recordWordMisses(ref, missedWords) {
   saveProgress();
 }
 
+// Called when a word flagged as weak gets answered correctly during a
+// Weak Link drill — lets a word earn its way off the list instead of
+// staying flagged forever once it's actually been fixed.
+export function resolveWordMiss(ref, word) {
+  const e = entryFor(ref);
+  if (e.wordMisses[word]) {
+    e.wordMisses[word] -= 1;
+    if (e.wordMisses[word] <= 0) delete e.wordMisses[word];
+    saveProgress();
+  }
+}
+
 export function setMemoryHook(ref, hook) {
   const e = entryFor(ref);
   e.memoryHook = { note: hook.note || '', imageUrl: hook.imageUrl || '' };

@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
 document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
@@ -14,6 +14,7 @@ const MODES = [
   { id: 'reverse', label: 'Dead Reckoning', hint: 'Name the Reference', desc: 'Read the verse with no reference shown, then pick which passage it comes from.' },
   { id: 'fade', label: 'Fathom by Fathom', hint: 'Fill in the Blanks', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
+  { id: 'weaklink', label: 'Weak Link', hint: 'Drill Your Misses', desc: 'Only the specific words you keep getting wrong are blanked — everything else stays visible for context.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
 const STAGE_LABELS = { new: 'New', recognized: 'Recognized', cued: 'Cued', free: 'Free Recall', mastered: 'Mastered', maintenance: 'Maintained' };
@@ -126,6 +127,12 @@ function renderHome() {
     </div>
   `;
   }).join('');
+
+  // Weak Link only makes sense once this category actually has tracked
+  // misses to drill — disable the option entirely otherwise, rather
+  // than letting someone pick a mode with nothing for it to do.
+  const weakOpt = document.querySelector('#modeSelect option[value="weaklink"]');
+  if (weakOpt) weakOpt.disabled = !group.verses.some(v => Object.keys(getProgress(v.ref).wordMisses).length > 0);
 
   const select = document.getElementById('modeSelect');
   select.value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
@@ -283,7 +290,11 @@ function normWord(w) {
 function beginSession(verses) {
   state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty, verses };
   const group = DATA.find(g => g.cat === state.cat);
-  state.sessionVerses = verses || group.verses.slice();
+  let sessionVerses = verses || group.verses.slice();
+  if (state.mode === 'weaklink' && !verses) {
+    sessionVerses = sessionVerses.filter(v => Object.keys(getProgress(v.ref).wordMisses).length > 0);
+  }
+  state.sessionVerses = sessionVerses;
   state.stepIndex = 0;
   state.results = [];
   state.startTime = Date.now();
@@ -314,6 +325,7 @@ function showStep() {
   if (state.mode === 'fade') renderFade(v);
   else if (state.mode === 'letters') renderLettersIntro(v);
   else if (state.mode === 'reverse') renderReverse(v);
+  else if (state.mode === 'weaklink') renderWeakLink(v);
   else renderType(v);
 }
 
@@ -363,6 +375,60 @@ function checkFade() {
   state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct` });
   recordRecall(v.ref, pct, 'cued');
   recordWordMisses(v.ref, missed);
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+}
+
+function renderWeakLink(v) {
+  const words = v.text.split(' ');
+  const misses = getProgress(v.ref).wordMisses;
+  const hiddenSet = new Set();
+  words.forEach((w, i) => { if ((misses[normWord(w)] || 0) >= 2) hiddenSet.add(i); });
+  const card = document.getElementById('flashcard');
+  if (!hiddenSet.size) {
+    // A sibling verse in this category has weak words but this one
+    // doesn't (yet) — nothing to drill, don't block the session on it.
+    card.innerHTML = `
+      <div class="theme-tag">${state.cat} · weak link</div>
+      <div class="ref">${v.ref}</div>
+      <div class="verse-text">${v.text}</div>
+      <div class="tap-hint">No tracked misses for this verse yet — nothing to drill.</div>
+    `;
+    document.getElementById('rateRow').style.display = 'flex';
+    document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+    return;
+  }
+  const spans = words.map((w, i) => {
+    if (hiddenSet.has(i)) {
+      const widthCh = Math.max(3, w.length);
+      return `<input class="blank-input" data-idx="${i}" data-answer="${w.replace(/"/g, '&quot;')}" style="width:${widthCh}ch" autocomplete="off" autocapitalize="off" spellcheck="false">`;
+    }
+    return `<span class="word-static">${w}</span>`;
+  }).join(' ');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · weak link</div>
+    <div class="ref">${v.ref}</div>
+    <div class="verse-text">${spans}</div>
+  `;
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkWeakLink()">Check</button>`;
+}
+function checkWeakLink() {
+  const inputs = document.querySelectorAll('.blank-input');
+  if (inputs.length && inputs[0].disabled) { state.stepIndex++; showStep(); return; }
+  const v = state.sessionVerses[state.stepIndex];
+  let correct = 0;
+  inputs.forEach(inp => {
+    const ok = normWord(inp.value) === normWord(inp.dataset.answer);
+    inp.classList.add(ok ? 'ok' : 'bad');
+    const answerWord = normWord(inp.dataset.answer);
+    if (!ok) { inp.value = inp.dataset.answer; recordWordMisses(v.ref, [answerWord]); }
+    else resolveWordMiss(v.ref, answerWord);
+    inp.disabled = true;
+    if (ok) correct++;
+  });
+  const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
+  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} weak words fixed` });
+  recordRecall(v.ref, pct, 'cued');
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
 
@@ -671,7 +737,8 @@ function openHistory() {
 // onclick attributes must be attached to window explicitly.
 Object.assign(window, {
   openHistory, goHome, showView, replaySession, toggleReview,
-  checkFade, nextStep, checkType, startPractice, cancelSession, openReview
+  checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
+  checkWeakLink
 });
 
 loadProgress().then(loadHistory);
