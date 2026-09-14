@@ -16,6 +16,9 @@ const MODES = [
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
+const STAGE_LABELS = { new: 'New', recognized: 'Recognized', cued: 'Cued', free: 'Free Recall', mastered: 'Mastered', maintenance: 'Maintained' };
+const STAGE_RANK = { new: 0, recognized: 1, cued: 2, free: 3, mastered: 4, maintenance: 5 };
+
 function diffsForMode(mode) {
   return mode === 'fade' ? FADE_DIFFS
     : mode === 'letters' ? LETTER_DIFFS
@@ -104,17 +107,25 @@ function onModeSelectChange() {
 function renderHome() {
   const group = DATA.find(g => g.cat === state.cat);
 
+  renderReviewBanner();
+
   document.getElementById('catHeader').innerHTML = `
     <div class="cat-header-icon">${CATEGORY_ICONS[state.cat] || ''}</div>
     <div class="cat-header-name">${state.cat}</div>
   `;
 
-  document.getElementById('verseList').innerHTML = group.verses.map(v => `
+  document.getElementById('verseList').innerHTML = group.verses.map(v => {
+    const stage = getProgress(v.ref).stage;
+    return `
     <div class="verse-card">
-      <div class="verse-card-ref">${v.ref}</div>
+      <div class="verse-card-top">
+        <div class="verse-card-ref">${v.ref}</div>
+        <div class="stage-badge stage-${stage}">${STAGE_LABELS[stage]}</div>
+      </div>
       <div class="verse-card-text">${v.text}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const select = document.getElementById('modeSelect');
   select.value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
@@ -138,10 +149,72 @@ function renderHome() {
 
 function selectCategory(cat) {
   state.cat = cat;
+  // Default the mode picker to whatever the category's weakest verse
+  // needs next — a real default, not a lock, so it never overrides a
+  // choice the user is about to make after this.
+  const group = DATA.find(g => g.cat === cat);
+  const weakest = group.verses.reduce((worst, v) => {
+    const s = getProgress(v.ref).stage;
+    return STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst;
+  }, 'maintenance');
+  const sug = suggestedModeForStage(weakest);
+  state.mode = sug.mode;
+  const diffs = diffsForMode(sug.mode);
+  state.difficulty = diffs ? (diffs.find(d => d.id === sug.diffId) || diffs[0]) : null;
   renderHome();
 }
 
 function startPractice() { beginSession(); }
+
+// Retention-health strip: what's actually due, what's holding, what's
+// slipping — the "what should I do today" view, separate from the
+// category-scoped High Score leaderboard on the score screen.
+function renderReviewBanner() {
+  const due = getDueVerses(DATA);
+  let mastered = 0, atRisk = 0;
+  DATA.forEach(g => g.verses.forEach(v => {
+    const e = getProgress(v.ref);
+    if (e.stage === 'mastered' || e.stage === 'maintenance') mastered++;
+  }));
+  due.forEach(d => { if ((d.overdueDays ?? 0) > 3) atRisk++; });
+  document.getElementById('reviewBanner').innerHTML = `
+    <div class="review-stats">
+      <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
+      <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
+      <div class="review-stat${atRisk ? ' review-stat-risk' : ''}"><span>${atRisk}</span><small>At Risk</small></div>
+    </div>
+    <button class="btn primary wide" onclick="openReview()" ${due.length ? '' : 'disabled'}>
+      ${due.length ? 'Start Review' : 'All Caught Up'}
+    </button>
+  `;
+}
+
+function openReview() {
+  const due = getDueVerses(DATA);
+  document.getElementById('dueList').innerHTML = due.map((d, i) => `
+    <div class="due-item" data-idx="${i}">
+      <div class="due-item-main">
+        <div class="due-item-ref">${d.ref}</div>
+        <div class="due-item-cat">${d.cat}${d.overdueDays ? ` · ${d.overdueDays}d overdue` : ''}</div>
+      </div>
+      <div class="stage-badge stage-${d.stage}">${STAGE_LABELS[d.stage]}</div>
+    </div>
+  `).join('');
+  document.querySelectorAll('.due-item').forEach((el, i) => {
+    el.onclick = () => startReviewItem(due[i]);
+  });
+  showStage('reviewArea', `${due.length} Due for Review`);
+}
+
+function startReviewItem(item) {
+  const group = DATA.find(g => g.cat === item.cat);
+  const v = group.verses.find(x => x.ref === item.ref);
+  state.cat = item.cat;
+  state.mode = item.suggested.mode;
+  const diffs = diffsForMode(item.suggested.mode);
+  state.difficulty = diffs ? (diffs.find(d => d.id === item.suggested.diffId) || diffs[0]) : null;
+  beginSession([v]);
+}
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -154,7 +227,7 @@ function goHome() { renderHome(); showView('view-home'); cancelSession(); }
 // one at once — swapping between them is a same-page content swap
 // (no showView/navigation), so the category header, mode picker, and
 // category switcher all stay in place while a session runs.
-const STAGES = ['verseList', 'practiceArea', 'matchArea', 'scoreArea'];
+const STAGES = ['verseList', 'reviewArea', 'practiceArea', 'matchArea', 'scoreArea'];
 function showStage(name, title) {
   STAGES.forEach(id => { document.getElementById(id).style.display = (id === name) ? '' : 'none'; });
   const isIdle = name === 'verseList';
@@ -207,10 +280,10 @@ function normWord(w) {
   return (w || '').toLowerCase().replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
 }
 
-function beginSession() {
-  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty };
+function beginSession(verses) {
+  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty, verses };
   const group = DATA.find(g => g.cat === state.cat);
-  state.sessionVerses = group.verses.slice();
+  state.sessionVerses = verses || group.verses.slice();
   state.stepIndex = 0;
   state.results = [];
   state.startTime = Date.now();
@@ -226,7 +299,7 @@ function replaySession() {
   state.cat = state.lastConfig.cat;
   state.mode = state.lastConfig.mode;
   state.difficulty = state.lastConfig.difficulty;
-  beginSession();
+  beginSession(state.lastConfig.verses);
 }
 
 function showStep() {
@@ -598,7 +671,7 @@ function openHistory() {
 // onclick attributes must be attached to window explicitly.
 Object.assign(window, {
   openHistory, goHome, showView, replaySession, toggleReview,
-  checkFade, nextStep, checkType, startPractice, cancelSession
+  checkFade, nextStep, checkType, startPractice, cancelSession, openReview
 });
 
 loadProgress().then(loadHistory);

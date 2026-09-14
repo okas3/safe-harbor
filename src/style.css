@@ -85,11 +85,44 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
   background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
   border-radius: 4px; padding: 14px 16px;
 }
+.verse-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .verse-card-ref {
   font-size: 12px; color: var(--brass); text-transform: uppercase; letter-spacing: 1px;
-  margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 .verse-card-text { font-size: 15px; line-height: 1.6; color: var(--ink); }
+
+/* Mastery stage badge — reused on verse cards and the due-review list. */
+.stage-badge {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;
+  padding: 3px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace; color: var(--ink-faint); background: var(--bg-deep);
+  border: 1px solid var(--border);
+}
+.stage-badge.stage-recognized { color: var(--ink-dim); }
+.stage-badge.stage-cued { color: var(--brass); border-color: var(--brass-dim); }
+.stage-badge.stage-free { color: var(--brass-bright); border-color: var(--brass-dim); }
+.stage-badge.stage-mastered, .stage-badge.stage-maintenance { color: var(--sea); border-color: var(--sea); background: var(--sea-dim); }
+
+/* Retention-health banner — the "what should I do today" strip. */
+.review-banner {
+  background: var(--surface); border: 1px solid var(--border-lit); border-radius: 6px;
+  padding: 16px; margin-bottom: 20px;
+}
+.review-stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 14px; }
+.review-stat span { display: block; font-size: 22px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+.review-stat small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
+.review-stat-risk span { color: var(--rust); }
+
+.due-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.due-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; gap: 10px; transition: border-color 0.15s;
+}
+.due-item:hover { border-color: var(--brass-dim); }
+.due-item-ref { font-size: 14px; color: var(--ink); }
+.due-item-cat { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
 
 .setup-label {
   font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1px;

@@ -13,6 +13,8 @@
       <div class="subtitle">Hidden in the heart, so it rises before the escape does</div>
 
       <div id="view-home" class="view active">
+        <div class="review-banner" id="reviewBanner"></div>
+
         <div class="cat-header" id="catHeader"></div>
 
         <div id="stageBack" class="top-row" style="display:none;">
@@ -25,6 +27,11 @@
 
         <!-- Idle: verse previews for the selected category -->
         <div class="verse-list" id="verseList"></div>
+
+        <!-- Active: due-for-review queue, cross-category -->
+        <div id="reviewArea" style="display:none;">
+          <div class="due-list" id="dueList"></div>
+        </div>
 
         <!-- Active: Fathom by Fathom / Chain of Initials / By Heart -->
         <div id="practiceArea" style="display:none;">
