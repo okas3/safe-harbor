@@ -1,5 +1,5 @@
 {
-  "name": "anchor-scriptures",
+  "name": "safe-harbor",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,6 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.3.0"
+    "vite": "^6.4.3"
   }
 }

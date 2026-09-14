@@ -2,12 +2,100 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>anchor-scriptures</title>
+    <title>Safe Harbor · Anchor Scriptures</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;600&display=swap">
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div class="wrap">
+      <h1>Anchor Scriptures</h1>
+      <div class="subtitle">Hidden in the heart, so it rises before the escape does</div>
+
+      <div id="view-categories" class="view active">
+        <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
+        <div class="cat-list" id="catList"></div>
+      </div>
+
+      <div id="view-modes" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="goHome()">← Categories</button>
+          <span id="modeCatTitle"></span>
+        </div>
+        <div class="mode-list">
+          <div class="mode-card" onclick="pickMode('fade')">
+            <div class="mode-name">Fathom by Fathom</div>
+            <div class="mode-desc">Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.</div>
+          </div>
+          <div class="mode-card" onclick="pickMode('letters')">
+            <div class="mode-name">Chain of Initials</div>
+            <div class="mode-desc">Only initials shown. Recite from the skeleton, then type the full verse to be graded.</div>
+          </div>
+          <div class="mode-card" onclick="pickMode('type')">
+            <div class="mode-name">By Heart</div>
+            <div class="mode-desc">Just the reference. Type the whole verse. Graded word by word.</div>
+          </div>
+          <div class="mode-card" onclick="pickMode('match')">
+            <div class="mode-name">Safe Harbor</div>
+            <div class="mode-desc">All references and verses laid out at once. Tap to pair them correctly, race the clock.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-difficulty" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="showView('view-modes')">← Modes</button>
+          <span id="diffCatTitle"></span>
+        </div>
+        <div class="diff-list" id="diffList"></div>
+      </div>
+
+      <div id="view-practice" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="showView('view-modes')">← Modes</button>
+          <span id="catTitle"></span>
+        </div>
+        <div class="progress-line" id="progressLine"></div>
+        <div class="card-stage">
+          <div class="flashcard" id="flashcard"></div>
+        </div>
+        <div id="rateRow" class="rate-row" style="display:none;"></div>
+      </div>
+
+      <div id="view-match" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="showView('view-modes')">← Modes</button>
+          <span id="matchTitle"></span>
+        </div>
+        <div class="match-stats" id="matchStats"></div>
+        <div class="match-grid">
+          <div class="match-col" id="matchRefCol"></div>
+          <div class="match-col" id="matchTextCol"></div>
+        </div>
+      </div>
+
+      <div id="view-score" class="view">
+        <div class="score-screen">
+          <div class="score-big" id="scoreBig">—</div>
+          <div class="score-sub">Score</div>
+          <div class="score-meta" id="scoreMeta"></div>
+          <div class="score-actions">
+            <button class="btn primary wide" onclick="replaySession()">Play Again</button>
+            <button class="btn wide" id="reviewBtn" onclick="toggleReview()">Review</button>
+            <button class="btn wide" onclick="goHome()">Back to Categories</button>
+          </div>
+          <div class="review-list" id="reviewList" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div id="view-history" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="goHome()">← Categories</button>
+          <span>History</span>
+        </div>
+        <div id="historyBody"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/app.js"></script>
   </body>
 </html>

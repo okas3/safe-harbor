@@ -1,0 +1,437 @@
+import './style.css';
+import { DATA } from './verses.js';
+import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS } from './difficulties.js';
+
+const HISTORY_KEY = 'scripture-history-v3';
+
+let state = {
+  cat: null, mode: null, difficulty: null,
+  sessionVerses: [], stepIndex: 0, results: [],
+  startTime: 0, lastConfig: null
+};
+let matchState = null;
+
+let history = [];
+let db = null;
+
+async function loadHistory() {
+  try {
+    // window.claude only exists when this page runs inside a Claude
+    // Artifact — everywhere else (a plain browser, this Vite build)
+    // it's simply absent, so check via `window` rather than
+    // referencing the bare identifier (which would throw and skip
+    // the localStorage fallback below entirely).
+    db = (typeof window !== 'undefined' && window.claude?.use)
+      ? await window.claude.use('db')
+      : null;
+    if (db) {
+      const snap = await db.doc('history/log').get();
+      history = snap.exists ? (snap.data().entries || []) : [];
+    } else {
+      history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    }
+  } catch (e) {
+    try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+    catch (e2) { history = []; }
+  }
+  renderCategories();
+}
+async function saveHistory() {
+  try {
+    if (db) {
+      await db.doc('history/log').set({ entries: history });
+    } else {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+  } catch (e) {}
+}
+
+function bestScoreFor(cat) {
+  const entries = history.filter(h => h.cat === cat);
+  if (!entries.length) return null;
+  return Math.max(...entries.map(h => h.score));
+}
+function attemptsFor(cat) {
+  return history.filter(h => h.cat === cat).length;
+}
+
+function renderCategories() {
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  DATA.forEach(group => {
+    const best = bestScoreFor(group.cat);
+    const attempts = attemptsFor(group.cat);
+    const div = document.createElement('div');
+    div.className = 'cat-card';
+    div.onclick = () => openModes(group.cat);
+    div.innerHTML = `
+      <div>
+        <div class="cat-name">${group.cat}</div>
+        <div class="cat-attempts">${attempts} attempt${attempts === 1 ? '' : 's'}</div>
+      </div>
+      <div>
+        <div class="cat-best">${best === null ? '—' : best + '%'}</div>
+        <div class="cat-best-label">best score</div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { renderCategories(); showView('view-categories'); }
+
+function openModes(cat) {
+  state.cat = cat;
+  document.getElementById('modeCatTitle').textContent = cat;
+  showView('view-modes');
+}
+
+function pickMode(mode) {
+  state.mode = mode;
+  if (mode === 'type') { state.difficulty = null; beginSession(); return; }
+  document.getElementById('diffCatTitle').textContent = state.cat + ' · ' + modeLabel(mode);
+  const list = document.getElementById('diffList');
+  list.innerHTML = '';
+  const diffs = mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : MATCH_DIFFS;
+  diffs.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'diff-card';
+    div.onclick = () => { state.difficulty = d; beginSession(); };
+    div.innerHTML = `<div><div class="diff-name">${d.name}</div><div class="diff-sub">${d.sub}</div></div><div class="diff-chevron">›</div>`;
+    list.appendChild(div);
+  });
+  showView('view-difficulty');
+}
+
+function modeLabel(m) {
+  return m === 'fade' ? 'Fathom by Fathom' : m === 'letters' ? 'Chain of Initials' : m === 'type' ? 'By Heart' : 'Safe Harbor';
+}
+
+function normWord(w) {
+  // Strip everything but letters/digits/apostrophes, then drop any
+  // apostrophe left dangling at the start or end of the word — those
+  // are stray closing/opening quote marks from nested quotations in
+  // the verse text (e.g. "...to you.'\""), not real contractions.
+  // A contraction's apostrophe sits between letters, so it survives.
+  return (w || '').toLowerCase().replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
+}
+
+function beginSession() {
+  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty };
+  const group = DATA.find(g => g.cat === state.cat);
+  state.sessionVerses = group.verses.slice();
+  state.stepIndex = 0;
+  state.results = [];
+  state.startTime = Date.now();
+
+  if (state.mode === 'match') { beginMatch(); return; }
+
+  document.getElementById('catTitle').textContent = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  showView('view-practice');
+  showStep();
+}
+
+function replaySession() {
+  state.cat = state.lastConfig.cat;
+  state.mode = state.lastConfig.mode;
+  state.difficulty = state.lastConfig.difficulty;
+  beginSession();
+}
+
+function showStep() {
+  if (state.stepIndex >= state.sessionVerses.length) { finishSession(); return; }
+  document.getElementById('progressLine').innerHTML = `
+    <div class="chain-line">${state.sessionVerses.map((_, i) =>
+      `<div class="chain-link${i <= state.stepIndex ? ' set' : ''}"></div>`).join('')}</div>
+    <div>Verse ${state.stepIndex + 1} of ${state.sessionVerses.length}</div>
+  `;
+  document.getElementById('rateRow').style.display = 'none';
+  const v = state.sessionVerses[state.stepIndex];
+  if (state.mode === 'fade') renderFade(v);
+  else if (state.mode === 'letters') renderLettersIntro(v);
+  else renderType(v);
+}
+
+function renderFade(v) {
+  const words = v.text.split(' ');
+  const frac = state.difficulty.frac;
+  const numHidden = Math.max(1, Math.round(words.length * frac));
+  let seed = 0;
+  for (let i = 0; i < v.ref.length; i++) seed += v.ref.charCodeAt(i);
+  let positions = words.map((_, i) => i);
+  for (let i = positions.length - 1; i > 0; i--) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const j = Math.floor((seed / 233280) * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  const hiddenSet = new Set(positions.slice(0, numHidden));
+  const card = document.getElementById('flashcard');
+  const spans = words.map((w, i) => {
+    if (hiddenSet.has(i)) {
+      const widthCh = Math.max(3, w.length);
+      return `<input class="blank-input" data-idx="${i}" data-answer="${w.replace(/"/g, '&quot;')}" style="width:${widthCh}ch" autocomplete="off" autocapitalize="off" spellcheck="false">`;
+    }
+    return `<span class="word-static">${w}</span>`;
+  }).join(' ');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · fade</div>
+    <div class="ref">${v.ref}</div>
+    <div class="verse-text">${spans}</div>
+  `;
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkFade()">Check</button>`;
+}
+function checkFade() {
+  const inputs = document.querySelectorAll('.blank-input');
+  if (inputs.length && inputs[0].disabled) { state.stepIndex++; showStep(); return; }
+  let correct = 0;
+  inputs.forEach(inp => {
+    const ok = normWord(inp.value) === normWord(inp.dataset.answer);
+    inp.classList.add(ok ? 'ok' : 'bad');
+    if (!ok) inp.value = inp.dataset.answer;
+    inp.disabled = true;
+    if (ok) correct++;
+  });
+  const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
+  const v = state.sessionVerses[state.stepIndex];
+  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct` });
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+}
+
+function renderLettersIntro(v) {
+  const words = v.text.split(' ');
+  const every = state.difficulty.every;
+  const initials = words.map((w, i) => {
+    if (i % every !== 0) return '▁';
+    const m = w.match(/[A-Za-z]/);
+    return m ? m[0] : w[0];
+  }).join(' ');
+  const card = document.getElementById('flashcard');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · first-letter cue</div>
+    <div class="ref">${v.ref}</div>
+    <div class="letters-line">${initials}</div>
+    <div class="tap-hint">Recite it from these cues, then type it below</div>
+  `;
+  document.getElementById('rateRow').style.display = 'none';
+  setTimeout(() => renderTypeArea(v, true), 50);
+}
+function renderType(v) {
+  renderTypeArea(v, false);
+}
+function renderTypeArea(v, afterLetters) {
+  const card = document.getElementById('flashcard');
+  if (!afterLetters) {
+    card.innerHTML = `
+      <div class="theme-tag">${state.cat} · type from memory</div>
+      <div class="ref">${v.ref}</div>
+      <textarea id="typeInput" placeholder="Type the verse from memory..."></textarea>
+      <div id="typeResult"></div>
+    `;
+  } else {
+    card.insertAdjacentHTML('beforeend', `
+      <textarea id="typeInput" placeholder="Type the full verse..." style="margin-top:14px;"></textarea>
+      <div id="typeResult"></div>
+    `);
+  }
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkType()">Check</button>`;
+}
+function checkType() {
+  const btn = document.getElementById('rateRow');
+  if (btn.dataset.checked === '1') { state.stepIndex++; showStep(); return; }
+  const v = state.sessionVerses[state.stepIndex];
+  const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
+  const actual = v.text.split(' ');
+  let correctCount = 0;
+  const diffHtml = actual.map((w, i) => {
+    const match = typed[i] && normWord(typed[i]) === normWord(w);
+    if (match) correctCount++;
+    return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
+  }).join(' ');
+  const pct = Math.round((correctCount / actual.length) * 100);
+  document.getElementById('typeResult').innerHTML = `
+    <div class="score-line">${pct}% word match</div>
+    <div class="diff-line">${diffHtml}</div>
+  `;
+  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct` });
+  btn.dataset.checked = '1';
+  btn.innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+}
+function nextStep() {
+  const row = document.getElementById('rateRow');
+  row.dataset.checked = '';
+  state.stepIndex++;
+  showStep();
+}
+
+function beginMatch() {
+  const group = DATA.find(g => g.cat === state.cat);
+  let pairSource = group.verses.map(v => ({ ref: v.ref, text: v.text, cat: state.cat }));
+  let snippetLen = 999;
+  if (state.difficulty.id === 'hard') {
+    const others = DATA.filter(g => g.cat !== state.cat);
+    const other = others[Math.floor(Math.random() * others.length)];
+    pairSource = pairSource.concat(other.verses.map(v => ({ ref: v.ref, text: v.text, cat: other.cat })));
+    snippetLen = 6;
+  }
+  const snippetOf = (text) => {
+    const words = text.split(' ');
+    return words.length <= snippetLen ? text : words.slice(0, snippetLen).join(' ') + '…';
+  };
+  const refs = pairSource.map(p => ({ ref: p.ref })).sort(() => Math.random() - 0.5);
+  const texts = pairSource.map(p => ({ ref: p.ref, snippet: snippetOf(p.text) })).sort(() => Math.random() - 0.5);
+
+  matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
+
+  document.getElementById('matchTitle').textContent = state.cat + ' · match · ' + state.difficulty.name;
+  renderMatch();
+  showView('view-match');
+}
+
+function renderMatch() {
+  document.getElementById('matchStats').textContent = `${matchState.matchedCount}/${matchState.total} paired · ${matchState.mistakes} miss${matchState.mistakes === 1 ? '' : 'es'}`;
+  const refCol = document.getElementById('matchRefCol');
+  const textCol = document.getElementById('matchTextCol');
+  refCol.innerHTML = '';
+  textCol.innerHTML = '';
+  matchState.refs.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = r.ref;
+    div.dataset.ref = r.ref;
+    if (r.matched) div.classList.add('matched');
+    if (matchState.selectedRef === r.ref && !r.matched) div.classList.add('selected');
+    if (!r.matched) div.onclick = () => selectRef(r.ref);
+    refCol.appendChild(div);
+  });
+  matchState.texts.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = t.snippet;
+    div.dataset.ref = t.ref;
+    if (t.matched) div.classList.add('matched');
+    if (!t.matched) div.onclick = () => selectText(t.ref);
+    textCol.appendChild(div);
+  });
+}
+function selectRef(ref) {
+  matchState.selectedRef = (matchState.selectedRef === ref) ? null : ref;
+  renderMatch();
+}
+function selectText(ref) {
+  if (!matchState.selectedRef) return;
+  const chosenRef = matchState.selectedRef;
+  if (chosenRef === ref) {
+    matchState.refs.find(r => r.ref === chosenRef).matched = true;
+    matchState.texts.find(t => t.ref === ref).matched = true;
+    matchState.matchedCount++;
+    matchState.selectedRef = null;
+    renderMatch();
+    if (matchState.matchedCount === matchState.total) finishMatch();
+  } else {
+    matchState.mistakes++;
+    matchState.selectedRef = null;
+    renderMatch();
+  }
+}
+function finishMatch() {
+  const timeSec = Math.round((Date.now() - matchState.startTime) / 1000);
+  const score = Math.round((matchState.total / (matchState.total + matchState.mistakes)) * 100);
+  logAttempt(state.cat, 'match', state.difficulty.name, score, timeSec);
+  showScoreScreen(score, timeSec, [], `${matchState.total} pairs · ${matchState.mistakes} miss${matchState.mistakes === 1 ? '' : 'es'}`);
+}
+
+function finishSession() {
+  const timeSec = Math.round((Date.now() - state.startTime) / 1000);
+  const avg = Math.round(state.results.reduce((s, r) => s + r.score, 0) / state.results.length);
+  logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '—', avg, timeSec);
+  showScoreScreen(avg, timeSec, state.results, null);
+}
+
+function logAttempt(cat, mode, difficulty, score, timeSec) {
+  history.unshift({ ts: new Date().toISOString(), cat, mode: modeLabel(mode), difficulty, score, timeSec });
+  saveHistory();
+}
+
+function showScoreScreen(score, timeSec, results, extraLine) {
+  document.getElementById('scoreBig').textContent = score + '%';
+  const mins = Math.floor(timeSec / 60), secs = timeSec % 60;
+  const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+  document.getElementById('scoreMeta').innerHTML = `
+    ${state.cat} · ${modeLabel(state.mode)}${state.difficulty ? ' · ' + state.difficulty.name : ''}<br>
+    Time: ${timeStr}${extraLine ? '<br>' + extraLine : ''}
+  `;
+  const reviewList = document.getElementById('reviewList');
+  const reviewBtn = document.getElementById('reviewBtn');
+  if (results && results.length) {
+    reviewBtn.style.display = 'block';
+    reviewList.style.display = 'none';
+    reviewList.innerHTML = results.map(r => `
+      <div class="review-item">
+        <div class="review-ref">${r.ref}<span class="review-pct">${r.score}%</span></div>
+        <div class="review-detail">${r.detail}</div>
+      </div>
+    `).join('');
+  } else {
+    reviewBtn.style.display = 'none';
+    reviewList.style.display = 'none';
+  }
+  showView('view-score');
+}
+function toggleReview() {
+  const el = document.getElementById('reviewList');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+function openHistory() {
+  const body = document.getElementById('historyBody');
+  if (!history.length) {
+    body.innerHTML = `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
+    showView('view-history');
+    return;
+  }
+  const totalAttempts = history.length;
+  const avgScore = Math.round(history.reduce((s, h) => s + h.score, 0) / totalAttempts);
+  const bestOverall = Math.max(...history.map(h => h.score));
+  const rows = history.slice(0, 60).map(h => {
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `<tr>
+      <td>${dateStr}</td>
+      <td>${h.cat}</td>
+      <td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td>
+      <td>${h.score}%</td>
+      <td>${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="hist-summary">
+      <div><span>${totalAttempts}</span><small>Attempts</small></div>
+      <div><span>${avgScore}%</span><small>Avg Score</small></div>
+      <div><span>${bestOverall}%</span><small>Best Score</small></div>
+    </div>
+    <table class="hist-table">
+      <tr><th>Date</th><th>Category</th><th>Mode</th><th>Score</th><th>Time</th></tr>
+      ${rows}
+    </table>
+  `;
+  showView('view-history');
+}
+
+// The markup uses inline onclick="" handlers (kept as-is from the
+// original single-file version — rewiring to addEventListener isn't
+// needed for this app's size and would just be churn). Since this
+// file is loaded as an ES module, its top-level functions are NOT
+// implicitly global, so the ones referenced from index.html's
+// onclick attributes must be attached to window explicitly.
+Object.assign(window, {
+  openHistory, goHome, pickMode, showView, replaySession, toggleReview,
+  checkFade, nextStep, checkType
+});
+
+loadHistory();
