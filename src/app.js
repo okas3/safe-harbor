@@ -110,8 +110,6 @@ function onModeSelectChange() {
 function renderHome() {
   const group = DATA.find(g => g.cat === state.cat);
 
-  renderReviewBanner();
-
   document.getElementById('catHeader').innerHTML = `
     <div class="cat-header-icon">${CATEGORY_ICONS[state.cat] || ''}</div>
     <div class="cat-header-name">${state.cat}</div>
@@ -231,9 +229,11 @@ function selectCategory(cat) {
 function startPractice() { state.isReviewSession = false; beginSession(); }
 
 // Retention-health strip: what's actually due, what's holding, what's
-// slipping — the "what should I do today" view, separate from the
-// category-scoped High Score leaderboard on the score screen.
-function renderReviewBanner() {
+// slipping — shown when you actually open Review, not leading the
+// home screen (a fresh account with zero practice history would
+// otherwise open to a meaningless "28 Due Today" before you've done
+// anything at all).
+function openReview() {
   const due = getDueVerses(DATA);
   let mastered = 0, atRisk = 0;
   DATA.forEach(g => g.verses.forEach(v => {
@@ -241,21 +241,12 @@ function renderReviewBanner() {
     if (e.stage === 'mastered' || e.stage === 'maintenance') mastered++;
   }));
   due.forEach(d => { if ((d.overdueDays ?? 0) > 3) atRisk++; });
-  document.getElementById('reviewBanner').innerHTML = `
-    <div class="review-stats">
-      <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
-      <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
-      <div class="review-stat${atRisk ? ' review-stat-risk' : ''}"><span>${atRisk}</span><small>At Risk</small></div>
-    </div>
-    <button class="btn primary wide" onclick="openReview()" ${due.length ? '' : 'disabled'}>
-      ${due.length ? 'Start Review' : 'All Caught Up'}
-    </button>
+  document.getElementById('reviewStatsInline').innerHTML = `
+    <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
+    <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
+    <div class="review-stat${atRisk ? ' review-stat-risk' : ''}"><span>${atRisk}</span><small>At Risk</small></div>
   `;
-}
-
-function openReview() {
-  const due = getDueVerses(DATA);
-  document.getElementById('dueList').innerHTML = due.map((d, i) => `
+  document.getElementById('dueList').innerHTML = due.length ? due.map((d, i) => `
     <div class="due-item" data-idx="${i}">
       <div class="due-item-main">
         <div class="due-item-ref">${d.ref}</div>
@@ -263,11 +254,11 @@ function openReview() {
       </div>
       <div class="stage-badge stage-${d.stage}">${STAGE_LABELS[d.stage]}</div>
     </div>
-  `).join('');
+  `).join('') : `<div class="empty-hist">All caught up — nothing due right now.</div>`;
   document.querySelectorAll('.due-item').forEach((el, i) => {
     el.onclick = () => startReviewItem(due[i]);
   });
-  showStage('reviewArea', `${due.length} Due for Review`);
+  showStage('reviewArea', due.length ? `${due.length} Due for Review` : 'Review');
 }
 
 function startReviewItem(item) {
@@ -298,11 +289,6 @@ function showStage(name, title) {
   const isIdle = name === 'verseList';
   document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
   document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
-  // The retention-health banner ("N Due Today / Start Review") is a
-  // browsing-screen affordance — it should disappear the moment you're
-  // actually doing something (a practice round, the queue itself, a
-  // score screen), not sit fixed above every stage the whole time.
-  document.getElementById('reviewBanner').style.display = isIdle ? '' : 'none';
   // The review queue spans every category, so the single-category
   // header (correct for every other stage, including review-launched
   // single-verse sessions — startReviewItem() sets state.cat to that

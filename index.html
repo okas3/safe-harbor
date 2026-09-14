@@ -13,8 +13,6 @@
       <div class="subtitle">Hidden in the heart, so it rises before the escape does</div>
 
       <div id="view-home" class="view active">
-        <div class="review-banner" id="reviewBanner"></div>
-
         <div class="cat-header" id="catHeader"></div>
 
         <div id="stageBack" class="top-row" style="display:none;">
@@ -30,6 +28,7 @@
 
         <!-- Active: due-for-review queue, cross-category -->
         <div id="reviewArea" style="display:none;">
+          <div class="review-stats" id="reviewStatsInline"></div>
           <div class="due-list" id="dueList"></div>
         </div>
 
@@ -83,7 +82,10 @@
             <div class="pill-row" id="catPills"></div>
           </div>
 
-          <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
+          <div class="home-actions">
+            <button class="btn" onclick="openReview()">Review</button>
+            <button class="btn" onclick="openHistory()">View History</button>
+          </div>
         </div>
       </div>
 
