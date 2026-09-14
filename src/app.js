@@ -125,13 +125,18 @@ function renderHome() {
     <div class="verse-card">
       <div class="verse-card-top">
         <div class="verse-card-ref">${v.ref}</div>
-        <div class="stage-badge stage-${stage}">${STAGE_LABELS[stage]}</div>
+        <div class="verse-card-badges">
+          <button class="hook-icon-btn${hasHook ? ' has-hook' : ''}" title="${hasHook ? 'Edit memory hook' : 'Add memory hook'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18h6"/><path d="M10 22h4"/>
+              <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/>
+            </svg>
+          </button>
+          <div class="stage-badge stage-${stage}">${STAGE_LABELS[stage]}</div>
+        </div>
       </div>
       <div class="verse-card-text">${v.text}</div>
-      <div class="hook-row">
-        ${hook.imageUrl ? `<img class="hook-thumb" src="${hook.imageUrl}" alt="Memory hook for ${v.ref}">` : ''}
-        <button class="hook-toggle-btn">${hasHook ? 'Edit Memory Hook' : '+ Add Memory Hook'}</button>
-      </div>
+      ${hook.imageUrl ? `<img class="hook-thumb" src="${hook.imageUrl}" alt="Memory hook for ${v.ref}">` : ''}
       <div class="hook-editor" style="display:none;">
         <textarea class="hook-note-input" placeholder="Describe a mental picture or keyword association…">${hook.note || ''}</textarea>
         <input type="file" accept="image/*" class="hook-file-input">
@@ -143,7 +148,7 @@ function renderHome() {
 
   document.querySelectorAll('#verseList .verse-card').forEach((card, i) => {
     const v = group.verses[i];
-    card.querySelector('.hook-toggle-btn').onclick = () => {
+    card.querySelector('.hook-icon-btn').onclick = () => {
       const editor = card.querySelector('.hook-editor');
       editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
     };
