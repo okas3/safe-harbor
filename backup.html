@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Anchor Scriptures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Deep-sea watch: a single deliberate world, lit like a ship's
+     cabin at night — brass instruments, dark chart-table wood,
+     the anchor chain as the recurring motif for depth and progress. */
+  :root {
+    --bg: #0a141d;
+    --bg-deep: #060d13;
+    --surface: #101f2b;
+    --surface-raised: #16293869;
+    --surface-raised-solid: #182b39;
+    --ink: #dfe8ec;
+    --ink-dim: #7e97a6;
+    --ink-faint: #4c6270;
+    --brass: #c19a5b;
+    --brass-bright: #dcb877;
+    --brass-dim: #7d6339;
+    --sea: #4f9d84;
+    --sea-dim: rgba(79,157,132,0.14);
+    --rust: #c26a4f;
+    --rust-dim: rgba(194,106,79,0.14);
+    --border: #1f3444;
+    --border-lit: #3a5468;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, #0f2130 0%, transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'Instrument Sans', -apple-system, sans-serif;
+    min-height: 100vh; padding: 28px 16px 60px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  h1 {
+    font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 25px; font-weight: 600;
+    letter-spacing: 2.5px; text-align: center; margin: 6px 0 2px; color: var(--brass-bright);
+    text-transform: uppercase;
+  }
+  h1::before, h1::after { content: '⚓'; font-size: 14px; color: var(--brass-dim); margin: 0 10px; vertical-align: middle; }
+  .subtitle {
+    text-align: center; color: var(--ink-dim); font-size: 14px; margin-bottom: 26px;
+    font-style: italic; font-family: 'Instrument Sans', -apple-system, sans-serif;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; }
+  .btn {
+    background: none; border: 1px solid var(--border); color: var(--ink-dim);
+    padding: 8px 14px; border-radius: 3px; font-family: 'Instrument Sans', -apple-system, sans-serif;
+    font-size: 14px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  .btn:hover { border-color: var(--brass-dim); color: var(--ink); }
+  .btn.primary {
+    background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+    color: #1a1206; border: none; font-weight: 600;
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.wide { width: 100%; padding: 13px; }
+
+  .home-actions { display: flex; justify-content: center; margin-bottom: 18px; }
+
+  .cat-list { display: flex; flex-direction: column; gap: 10px; }
+  .cat-card {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
+    border-radius: 4px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+  }
+  .cat-card:hover { border-color: var(--border-lit); border-left-color: var(--brass); transform: translateX(2px); }
+  .cat-name { font-size: 17px; }
+  .cat-attempts { font-size: 11.5px; color: var(--ink-faint); margin-top: 3px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.2px; }
+  .cat-best { font-size: 21px; color: var(--brass-bright); font-weight: 600; text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .cat-best-label { font-size: 9.5px; color: var(--ink-faint); text-align: right; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  .mode-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+  .mode-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 15px 17px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .mode-card:hover { border-color: var(--brass-dim); }
+  .mode-name {
+    font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 13.5px; letter-spacing: 0.8px;
+    color: var(--brass-bright); margin-bottom: 5px; text-transform: uppercase;
+  }
+  .mode-desc { font-size: 14px; color: var(--ink-dim); line-height: 1.45; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+
+  .diff-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .diff-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 13px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    transition: border-color 0.15s;
+  }
+  .diff-card:hover { border-color: var(--brass-dim); }
+  .diff-name { font-size: 15px; color: var(--ink); }
+  .diff-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+
+  .chain-line { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+  .chain-link {
+    width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink-faint);
+    background: transparent; transition: background 0.2s, border-color 0.2s;
+  }
+  .chain-link.set { border-color: var(--brass); background: var(--brass); }
+
+  .card-stage { margin: 10px 0 16px; }
+  .flashcard {
+    background: linear-gradient(180deg, var(--surface-raised-solid), var(--surface));
+    border: 1px solid var(--border); border-radius: 6px;
+    min-height: 200px; padding: 30px 24px; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 12px 30px -18px rgba(0,0,0,0.6);
+  }
+  .ref {
+    font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 13px; color: var(--brass);
+    letter-spacing: 1.5px; margin-bottom: 16px; text-transform: uppercase;
+  }
+  .theme-tag { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; }
+  .verse-text { font-size: 19px; line-height: 1.75; color: var(--ink); font-family: 'Instrument Sans', -apple-system, sans-serif; }
+  .word-static { display: inline; }
+  .blank-input {
+    display: inline-block; background: var(--bg-deep); border: none; border-bottom: 2px solid var(--brass-dim);
+    color: var(--ink); font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 19px; text-align: center;
+    padding: 1px 3px; margin: 0 1px; border-radius: 2px;
+  }
+  .blank-input:focus { outline: none; border-bottom-color: var(--brass); }
+  .blank-input.ok { border-bottom-color: var(--sea); color: var(--sea); }
+  .blank-input.bad { border-bottom-color: var(--rust); color: var(--rust); }
+  .letters-line { font-size: 20px; line-height: 1.9; letter-spacing: 1.5px; color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+  .tap-hint { margin-top: 20px; font-size: 12.5px; color: var(--ink-faint); font-style: italic; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+  .rate-row { display: flex; gap: 10px; margin-top: 4px; }
+  .rate-btn, .action-btn {
+    flex: 1; padding: 13px 8px; border-radius: 4px; border: none;
+    font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 13px; letter-spacing: 0.6px; cursor: pointer; font-weight: 600;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+    color: #1a1206;
+  }
+  .rate-btn:hover, .action-btn:hover { filter: brightness(1.08); }
+  .progress-line {
+    text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  textarea#typeInput {
+    width: 100%; min-height: 90px; background: var(--bg-deep); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 5px; padding: 12px;
+    font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 17px; line-height: 1.5; resize: vertical;
+  }
+  textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
+  .diff-line { font-size: 18px; line-height: 1.7; margin-top: 10px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+  .diff-line .ok { color: var(--sea); }
+  .diff-line .miss { color: var(--rust); text-decoration: line-through; opacity: 0.75; }
+  .score-line { text-align: center; font-size: 13px; color: var(--ink-dim); margin: 6px 0; }
+
+  .score-screen { text-align: center; padding: 20px 10px; }
+  .score-big {
+    font-family: 'JetBrains Mono', monospace; font-size: 46px; color: var(--brass-bright);
+    font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .score-sub {
+    color: var(--ink-faint); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .score-meta { margin: 18px 0; color: var(--ink-dim); font-size: 14px; line-height: 1.8; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+  .score-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .review-list { text-align: left; margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .review-item { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; }
+  .review-ref { font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 11px; color: var(--brass); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .review-pct { float: right; color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; }
+
+  .match-grid { display: flex; gap: 14px; }
+  .match-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .match-chip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+    padding: 10px 12px; font-size: 13.5px; cursor: pointer; line-height: 1.4;
+    font-family: 'Instrument Sans', -apple-system, sans-serif; transition: border-color 0.15s;
+  }
+  .match-chip:hover { border-color: var(--brass-dim); }
+  .match-chip.selected { border-color: var(--brass); background: rgba(193,154,91,0.1); }
+  .match-chip.matched { border-color: var(--sea); background: var(--sea-dim); color: var(--sea); cursor: default; opacity: 0.65; }
+  .match-stats {
+    text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .hist-summary { display: flex; justify-content: space-around; margin-bottom: 18px; text-align: center; }
+  .hist-summary div span { display: block; font-size: 23px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .hist-summary div small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
+  table.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+  table.hist-table th {
+    text-align: left; color: var(--ink-faint); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--border);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; font-family: 'JetBrains Mono', monospace;
+  }
+  table.hist-table td { padding: 7px 4px; border-bottom: 1px solid var(--border); }
+  .empty-hist { text-align: center; color: var(--ink-faint); padding: 30px 10px; font-size: 14px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Anchor Scriptures</h1>
+  <div class="subtitle">Hidden in the heart, so it rises before the escape does</div>
+
+  <div id="view-categories" class="view active">
+    <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
+    <div class="cat-list" id="catList"></div>
+  </div>
+
+  <div id="view-modes" class="view">
+    <div class="top-row">
+      <button class="btn" onclick="goHome()">← Categories</button>
+      <span id="modeCatTitle" style="color:var(--text-dim);font-size:13px;"></span>
+    </div>
+    <div class="mode-list">
+      <div class="mode-card" onclick="pickMode('fade')">
+        <div class="mode-name">Fathom by Fathom</div>
+        <div class="mode-desc">Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.</div>
+      </div>
+      <div class="mode-card" onclick="pickMode('letters')">
+        <div class="mode-name">Chain of Initials</div>
+        <div class="mode-desc">Only initials shown. Recite from the skeleton, then type the full verse to be graded.</div>
+      </div>
+      <div class="mode-card" onclick="pickMode('type')">
+        <div class="mode-name">By Heart</div>
+        <div class="mode-desc">Just the reference. Type the whole verse. Graded word by word.</div>
+      </div>
+      <div class="mode-card" onclick="pickMode('match')">
+        <div class="mode-name">Safe Harbor</div>
+        <div class="mode-desc">All references and verses laid out at once. Tap to pair them correctly, race the clock.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-difficulty" class="view">
+    <div class="top-row">
+      <button class="btn" onclick="showView('view-modes')">← Modes</button>
+      <span id="diffCatTitle" style="color:var(--text-dim);font-size:13px;"></span>
+    </div>
+    <div class="diff-list" id="diffList"></div>
+  </div>
+
+  <div id="view-practice" class="view">
+    <div class="top-row">
+      <button class="btn" onclick="showView('view-modes')">← Modes</button>
+      <span id="catTitle" style="color:var(--text-dim);font-size:13px;"></span>
+    </div>
+    <div class="progress-line" id="progressLine"></div>
+    <div class="card-stage">
+      <div class="flashcard" id="flashcard"></div>
+    </div>
+    <div id="rateRow" class="rate-row" style="display:none;"></div>
+  </div>
+
+  <div id="view-match" class="view">
+    <div class="top-row">
+      <button class="btn" onclick="showView('view-modes')">← Modes</button>
+      <span id="matchTitle" style="color:var(--text-dim);font-size:13px;"></span>
+    </div>
+    <div class="match-stats" id="matchStats"></div>
+    <div class="match-grid">
+      <div class="match-col" id="matchRefCol"></div>
+      <div class="match-col" id="matchTextCol"></div>
+    </div>
+  </div>
+
+  <div id="view-score" class="view">
+    <div class="score-screen">
+      <div class="score-big" id="scoreBig">—</div>
+      <div class="score-sub">Score</div>
+      <div class="score-meta" id="scoreMeta"></div>
+      <div class="score-actions">
+        <button class="btn primary wide" onclick="replaySession()">Play Again</button>
+        <button class="btn wide" id="reviewBtn" onclick="toggleReview()">Review</button>
+        <button class="btn wide" onclick="goHome()">Back to Categories</button>
+      </div>
+      <div class="review-list" id="reviewList" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="view-history" class="view">
+    <div class="top-row">
+      <button class="btn" onclick="goHome()">← Categories</button>
+      <span style="color:var(--text-dim);font-size:13px;">History</span>
+    </div>
+    <div id="historyBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   VERSE TEXT — fill these in yourself from your own ESV Bible
+   or app. Replace each placeholder string with the actual
+   verse wording. Leave the "ref" fields as they are.
+   ============================================================ */
+const DATA = [
+  { cat: "Who God Is", verses: [
+    { ref: "Exodus 3:14", text: "God said to Moses, \"I am who I am.\" And he said, \"Say this to the people of Israel: 'I am has sent me to you.'\"" },
+    { ref: "Psalm 90:2", text: "Before the mountains were brought forth, or ever you had formed the earth and the world, from everlasting to everlasting you are God." },
+    { ref: "Isaiah 40:28", text: "Have you not known? Have you not heard? The Lord is the everlasting God, the Creator of the ends of the earth. He does not faint or grow weary; his understanding is unsearchable." },
+    { ref: "1 John 4:8", text: "Anyone who does not love does not know God, because God is love." }
+  ]},
+  { cat: "Our Unrighteousness", verses: [
+    { ref: "Romans 3:23", text: "for all have sinned and fall short of the glory of God," },
+    { ref: "Isaiah 64:6", text: "We have all become like one who is unclean, and all our righteous deeds are like a polluted garment. We all fade like a leaf, and our iniquities, like the wind, take us away." },
+    { ref: "Jeremiah 17:9", text: "The heart is deceitful above all things, and desperately sick; who can understand it?" },
+    { ref: "Romans 6:23", text: "For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord." }
+  ]},
+  { cat: "God's Mercy", verses: [
+    { ref: "Lamentations 3:22-23", text: "The steadfast love of the Lord never ceases; his mercies never come to an end; they are new every morning; great is your faithfulness." },
+    { ref: "Psalm 103:10-12", text: "He does not deal with us according to our sins, nor repay us according to our iniquities. For as high as the heavens are above the earth, so great is his steadfast love toward those who fear him; as far as the east is from the west, so far does he remove our transgressions from us." },
+    { ref: "Ephesians 2:4-5", text: "But God, being rich in mercy, because of the great love with which he loved us, even when we were dead in our trespasses, made us alive together with Christ—by grace you have been saved—" },
+    { ref: "Titus 3:5", text: "he saved us, not because of works done by us in righteousness, but according to his own mercy, by the washing of regeneration and renewal of the Holy Spirit," }
+  ]},
+  { cat: "God's Power", verses: [
+    { ref: "Jeremiah 32:17", text: "'Ah, Lord God! It is you who have made the heavens and the earth by your great power and by your outstretched arm! Nothing is too hard for you." },
+    { ref: "Ephesians 3:20", text: "Now to him who is able to do far more abundantly than all that we ask or think, according to the power at work within us," },
+    { ref: "Isaiah 40:29-31", text: "He gives power to the faint, and to him who has no might he increases strength. Even youths shall faint and be weary, and young men shall fall exhausted; but they who wait for the Lord shall renew their strength; they shall mount up with wings like eagles; they shall run and not be weary; they shall walk and not faint." },
+    { ref: "2 Corinthians 12:9", text: "But he said to me, \"My grace is sufficient for you, for my power is made perfect in weakness.\" Therefore I will boast all the more gladly of my weaknesses, so that the power of Christ may rest upon me." }
+  ]},
+  { cat: "Power of Prayer", verses: [
+    { ref: "James 5:16", text: "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working." },
+    { ref: "Philippians 4:6-7", text: "do not be anxious about anything, but in everything by prayer and supplication with thanksgiving let your requests be made known to God. And the peace of God, which surpasses all understanding, will guard your hearts and your minds in Christ Jesus." },
+    { ref: "1 John 5:14-15", text: "And this is the confidence that we have toward him, that if we ask anything according to his will he hears us. And if we know that he hears us in whatever we ask, we know that we have the requests that we have asked of him." },
+    { ref: "Matthew 7:7", text: "\"Ask, and it will be given to you; seek, and you will find; knock, and it will be opened to you." }
+  ]},
+  { cat: "Power of Faith", verses: [
+    { ref: "Hebrews 11:1", text: "Now faith is the assurance of things hoped for, the conviction of things not seen." },
+    { ref: "Romans 10:17", text: "So faith comes from hearing, and hearing through the word of Christ." },
+    { ref: "2 Corinthians 5:7", text: "for we walk by faith, not by sight." },
+    { ref: "Matthew 17:20", text: "He said to them, \"Because of your little faith. For truly, I say to you, if you have faith like a grain of mustard seed, you will say to this mountain, 'Move from here to there,' and it will move, and nothing will be impossible for you.\"" }
+  ]},
+  { cat: "Renewal of the Mind", verses: [
+    { ref: "Romans 12:2", text: "Do not be conformed to this world, but be transformed by the renewal of your mind, that by testing you may discern what is the will of God, what is good and acceptable and perfect." },
+    { ref: "Philippians 4:8", text: "Finally, brothers, whatever is true, whatever is honorable, whatever is just, whatever is pure, whatever is lovely, whatever is commendable, if there is any excellence, if there is anything worthy of praise, think about these things." },
+    { ref: "2 Corinthians 10:5", text: "We destroy arguments and every lofty opinion raised against the knowledge of God, and take every thought captive to obey Christ," },
+    { ref: "Colossians 3:2", text: "Set your minds on things that are above, not on things that are on earth." }
+  ]}
+];
+
+const FADE_DIFFS = [
+  { id: 'veryeasy', name: 'The Shallows', sub: '~10% of words blanked', frac: 0.10 },
+  { id: 'easy', name: 'The Shoals', sub: '~25% of words blanked', frac: 0.25 },
+  { id: 'normal', name: 'Open Water', sub: '~50% of words blanked', frac: 0.50 },
+  { id: 'hard', name: 'The Deep', sub: '~75% of words blanked', frac: 0.75 },
+  { id: 'nocues', name: 'The Abyss', sub: 'Nearly the whole verse blanked', frac: 0.92 }
+];
+const LETTER_DIFFS = [
+  { id: 'normal', name: 'Every Link', sub: 'Initial of every word', every: 1 },
+  { id: 'hard', name: 'Every Other Link', sub: 'Initial of every other word only', every: 2 }
+];
+const MATCH_DIFFS = [
+  { id: 'easy', name: 'Home Port', sub: 'This category only — 4 pairs, full text' },
+  { id: 'hard', name: 'Open Sea', sub: '8 pairs mixed with another category, short snippets' }
+];
+
+let state = {
+  cat: null, mode: null, difficulty: null,
+  sessionVerses: [], stepIndex: 0, results: [],
+  startTime: 0, lastConfig: null
+};
+let matchState = null;
+
+let history = [];
+let db = null;
+
+async function loadHistory() {
+  try {
+    db = await claude.use("db");
+    if (db) {
+      const snap = await db.doc("history/log").get();
+      history = snap.exists ? (snap.data().entries || []) : [];
+    } else {
+      history = JSON.parse(localStorage.getItem("scripture-history-v3") || "[]");
+    }
+  } catch (e) { history = []; }
+  renderCategories();
+}
+async function saveHistory() {
+  try {
+    if (db) {
+      await db.doc("history/log").set({ entries: history });
+    } else {
+      localStorage.setItem("scripture-history-v3", JSON.stringify(history));
+    }
+  } catch (e) {}
+}
+
+function bestScoreFor(cat) {
+  const entries = history.filter(h => h.cat === cat);
+  if (!entries.length) return null;
+  return Math.max(...entries.map(h => h.score));
+}
+function attemptsFor(cat) {
+  return history.filter(h => h.cat === cat).length;
+}
+
+function renderCategories() {
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  DATA.forEach(group => {
+    const best = bestScoreFor(group.cat);
+    const attempts = attemptsFor(group.cat);
+    const div = document.createElement('div');
+    div.className = 'cat-card';
+    div.onclick = () => openModes(group.cat);
+    div.innerHTML = `
+      <div>
+        <div class="cat-name">${group.cat}</div>
+        <div class="cat-attempts">${attempts} attempt${attempts === 1 ? '' : 's'}</div>
+      </div>
+      <div>
+        <div class="cat-best">${best === null ? '—' : best + '%'}</div>
+        <div class="cat-best-label">best score</div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { renderCategories(); showView('view-categories'); }
+
+function openModes(cat) {
+  state.cat = cat;
+  document.getElementById('modeCatTitle').textContent = cat;
+  showView('view-modes');
+}
+
+function pickMode(mode) {
+  state.mode = mode;
+  if (mode === 'type') { state.difficulty = null; beginSession(); return; }
+  document.getElementById('diffCatTitle').textContent = state.cat + ' · ' + modeLabel(mode);
+  const list = document.getElementById('diffList');
+  list.innerHTML = '';
+  const diffs = mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : MATCH_DIFFS;
+  diffs.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'diff-card';
+    div.onclick = () => { state.difficulty = d; beginSession(); };
+    div.innerHTML = `<div><div class="diff-name">${d.name}</div><div class="diff-sub">${d.sub}</div></div><div style="color:var(--text-dim);">›</div>`;
+    list.appendChild(div);
+  });
+  showView('view-difficulty');
+}
+
+function modeLabel(m) {
+  return m === 'fade' ? 'Fathom by Fathom' : m === 'letters' ? 'Chain of Initials' : m === 'type' ? 'By Heart' : 'Safe Harbor';
+}
+
+function normWord(w) {
+  // Strip everything but letters/digits/apostrophes, then drop any
+  // apostrophe left dangling at the start or end of the word — those
+  // are stray closing/opening quote marks from nested quotations in
+  // the verse text (e.g. "...to you.'\""), not real contractions.
+  // A contraction's apostrophe sits between letters, so it survives.
+  return (w || '').toLowerCase().replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
+}
+
+function beginSession() {
+  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty };
+  const group = DATA.find(g => g.cat === state.cat);
+  state.sessionVerses = group.verses.slice();
+  state.stepIndex = 0;
+  state.results = [];
+  state.startTime = Date.now();
+
+  if (state.mode === 'match') { beginMatch(); return; }
+
+  document.getElementById('catTitle').textContent = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  showView('view-practice');
+  showStep();
+}
+
+function replaySession() {
+  state.cat = state.lastConfig.cat;
+  state.mode = state.lastConfig.mode;
+  state.difficulty = state.lastConfig.difficulty;
+  beginSession();
+}
+
+function showStep() {
+  if (state.stepIndex >= state.sessionVerses.length) { finishSession(); return; }
+  document.getElementById('progressLine').innerHTML = `
+    <div class="chain-line">${state.sessionVerses.map((_, i) =>
+      `<div class="chain-link${i <= state.stepIndex ? ' set' : ''}"></div>`).join('')}</div>
+    <div>Verse ${state.stepIndex + 1} of ${state.sessionVerses.length}</div>
+  `;
+  document.getElementById('rateRow').style.display = 'none';
+  const v = state.sessionVerses[state.stepIndex];
+  if (state.mode === 'fade') renderFade(v);
+  else if (state.mode === 'letters') renderLettersIntro(v);
+  else renderType(v);
+}
+
+function renderFade(v) {
+  const words = v.text.split(' ');
+  const frac = state.difficulty.frac;
+  const numHidden = Math.max(1, Math.round(words.length * frac));
+  let seed = 0;
+  for (let i = 0; i < v.ref.length; i++) seed += v.ref.charCodeAt(i);
+  let positions = words.map((_, i) => i);
+  for (let i = positions.length - 1; i > 0; i--) {
+    seed = (seed * 9301 + 49297) % 233280;
+    const j = Math.floor((seed / 233280) * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  const hiddenSet = new Set(positions.slice(0, numHidden));
+  const card = document.getElementById('flashcard');
+  const spans = words.map((w, i) => {
+    if (hiddenSet.has(i)) {
+      const widthCh = Math.max(3, w.length);
+      return `<input class="blank-input" data-idx="${i}" data-answer="${w.replace(/"/g,'&quot;')}" style="width:${widthCh}ch" autocomplete="off" autocapitalize="off" spellcheck="false">`;
+    }
+    return `<span class="word-static">${w}</span>`;
+  }).join(' ');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · fade</div>
+    <div class="ref">${v.ref}</div>
+    <div class="verse-text">${spans}</div>
+  `;
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkFade()">Check</button>`;
+}
+function checkFade() {
+  const inputs = document.querySelectorAll('.blank-input');
+  if (inputs.length && inputs[0].disabled) { state.stepIndex++; showStep(); return; }
+  let correct = 0;
+  inputs.forEach(inp => {
+    const ok = normWord(inp.value) === normWord(inp.dataset.answer);
+    inp.classList.add(ok ? 'ok' : 'bad');
+    if (!ok) inp.value = inp.dataset.answer;
+    inp.disabled = true;
+    if (ok) correct++;
+  });
+  const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
+  const v = state.sessionVerses[state.stepIndex];
+  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct` });
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+}
+
+function renderLettersIntro(v) {
+  const words = v.text.split(' ');
+  const every = state.difficulty.every;
+  const initials = words.map((w, i) => {
+    if (i % every !== 0) return '▁';
+    const m = w.match(/[A-Za-z]/);
+    return m ? m[0] : w[0];
+  }).join(' ');
+  const card = document.getElementById('flashcard');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · first-letter cue</div>
+    <div class="ref">${v.ref}</div>
+    <div class="letters-line">${initials}</div>
+    <div class="tap-hint">Recite it from these cues, then type it below</div>
+  `;
+  document.getElementById('rateRow').style.display = 'none';
+  setTimeout(() => renderTypeArea(v, true), 50);
+}
+function renderType(v) {
+  renderTypeArea(v, false);
+}
+function renderTypeArea(v, afterLetters) {
+  const card = document.getElementById('flashcard');
+  if (!afterLetters) {
+    card.innerHTML = `
+      <div class="theme-tag">${state.cat} · type from memory</div>
+      <div class="ref">${v.ref}</div>
+      <textarea id="typeInput" placeholder="Type the verse from memory..."></textarea>
+      <div id="typeResult"></div>
+    `;
+  } else {
+    card.insertAdjacentHTML('beforeend', `
+      <textarea id="typeInput" placeholder="Type the full verse..." style="margin-top:14px;"></textarea>
+      <div id="typeResult"></div>
+    `);
+  }
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkType()">Check</button>`;
+}
+function checkType() {
+  const btn = document.getElementById('rateRow');
+  if (btn.dataset.checked === '1') { state.stepIndex++; showStep(); return; }
+  const v = state.sessionVerses[state.stepIndex];
+  const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
+  const actual = v.text.split(' ');
+  let correctCount = 0;
+  const diffHtml = actual.map((w, i) => {
+    const match = typed[i] && normWord(typed[i]) === normWord(w);
+    if (match) correctCount++;
+    return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
+  }).join(' ');
+  const pct = Math.round((correctCount / actual.length) * 100);
+  document.getElementById('typeResult').innerHTML = `
+    <div class="score-line">${pct}% word match</div>
+    <div class="diff-line">${diffHtml}</div>
+  `;
+  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct` });
+  btn.dataset.checked = '1';
+  btn.innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
+}
+function nextStep() {
+  const row = document.getElementById('rateRow');
+  row.dataset.checked = '';
+  state.stepIndex++;
+  showStep();
+}
+
+function beginMatch() {
+  const group = DATA.find(g => g.cat === state.cat);
+  let pairSource = group.verses.map(v => ({ ref: v.ref, text: v.text, cat: state.cat }));
+  let snippetLen = 999;
+  if (state.difficulty.id === 'hard') {
+    const others = DATA.filter(g => g.cat !== state.cat);
+    const other = others[Math.floor(Math.random() * others.length)];
+    pairSource = pairSource.concat(other.verses.map(v => ({ ref: v.ref, text: v.text, cat: other.cat })));
+    snippetLen = 6;
+  }
+  const snippetOf = (text) => {
+    const words = text.split(' ');
+    return words.length <= snippetLen ? text : words.slice(0, snippetLen).join(' ') + '…';
+  };
+  const refs = pairSource.map(p => ({ ref: p.ref })).sort(() => Math.random() - 0.5);
+  const texts = pairSource.map(p => ({ ref: p.ref, snippet: snippetOf(p.text) })).sort(() => Math.random() - 0.5);
+
+  matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
+
+  document.getElementById('matchTitle').textContent = state.cat + ' · match · ' + state.difficulty.name;
+  renderMatch();
+  showView('view-match');
+}
+
+function renderMatch() {
+  document.getElementById('matchStats').textContent = `${matchState.matchedCount}/${matchState.total} paired · ${matchState.mistakes} miss${matchState.mistakes === 1 ? '' : 'es'}`;
+  const refCol = document.getElementById('matchRefCol');
+  const textCol = document.getElementById('matchTextCol');
+  refCol.innerHTML = '';
+  textCol.innerHTML = '';
+  matchState.refs.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = r.ref;
+    div.dataset.ref = r.ref;
+    if (r.matched) div.classList.add('matched');
+    if (matchState.selectedRef === r.ref && !r.matched) div.classList.add('selected');
+    if (!r.matched) div.onclick = () => selectRef(r.ref);
+    refCol.appendChild(div);
+  });
+  matchState.texts.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = t.snippet;
+    div.dataset.ref = t.ref;
+    if (t.matched) div.classList.add('matched');
+    if (!t.matched) div.onclick = () => selectText(t.ref);
+    textCol.appendChild(div);
+  });
+}
+function selectRef(ref) {
+  matchState.selectedRef = (matchState.selectedRef === ref) ? null : ref;
+  renderMatch();
+}
+function selectText(ref) {
+  if (!matchState.selectedRef) return;
+  const chosenRef = matchState.selectedRef;
+  if (chosenRef === ref) {
+    matchState.refs.find(r => r.ref === chosenRef).matched = true;
+    matchState.texts.find(t => t.ref === ref).matched = true;
+    matchState.matchedCount++;
+    matchState.selectedRef = null;
+    renderMatch();
+    if (matchState.matchedCount === matchState.total) finishMatch();
+  } else {
+    matchState.mistakes++;
+    matchState.selectedRef = null;
+    renderMatch();
+  }
+}
+function finishMatch() {
+  const timeSec = Math.round((Date.now() - matchState.startTime) / 1000);
+  const score = Math.round((matchState.total / (matchState.total + matchState.mistakes)) * 100);
+  logAttempt(state.cat, 'match', state.difficulty.name, score, timeSec);
+  showScoreScreen(score, timeSec, [], `${matchState.total} pairs · ${matchState.mistakes} miss${matchState.mistakes === 1 ? '' : 'es'}`);
+}
+
+function finishSession() {
+  const timeSec = Math.round((Date.now() - state.startTime) / 1000);
+  const avg = Math.round(state.results.reduce((s, r) => s + r.score, 0) / state.results.length);
+  logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '—', avg, timeSec);
+  showScoreScreen(avg, timeSec, state.results, null);
+}
+
+function logAttempt(cat, mode, difficulty, score, timeSec) {
+  history.unshift({ ts: new Date().toISOString(), cat, mode: modeLabel(mode), difficulty, score, timeSec });
+  saveHistory();
+}
+
+function showScoreScreen(score, timeSec, results, extraLine) {
+  document.getElementById('scoreBig').textContent = score + '%';
+  const mins = Math.floor(timeSec / 60), secs = timeSec % 60;
+  const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+  document.getElementById('scoreMeta').innerHTML = `
+    ${state.cat} · ${modeLabel(state.mode)}${state.difficulty ? ' · ' + state.difficulty.name : ''}<br>
+    Time: ${timeStr}${extraLine ? '<br>' + extraLine : ''}
+  `;
+  const reviewList = document.getElementById('reviewList');
+  const reviewBtn = document.getElementById('reviewBtn');
+  if (results && results.length) {
+    reviewBtn.style.display = 'block';
+    reviewList.style.display = 'none';
+    reviewList.innerHTML = results.map(r => `
+      <div class="review-item">
+        <div class="review-ref">${r.ref}<span class="review-pct">${r.score}%</span></div>
+        <div style="font-size:12px;color:var(--text-dim);">${r.detail}</div>
+      </div>
+    `).join('');
+  } else {
+    reviewBtn.style.display = 'none';
+    reviewList.style.display = 'none';
+  }
+  showView('view-score');
+}
+function toggleReview() {
+  const el = document.getElementById('reviewList');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+function openHistory() {
+  const body = document.getElementById('historyBody');
+  if (!history.length) {
+    body.innerHTML = `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
+    showView('view-history');
+    return;
+  }
+  const totalAttempts = history.length;
+  const avgScore = Math.round(history.reduce((s, h) => s + h.score, 0) / totalAttempts);
+  const bestOverall = Math.max(...history.map(h => h.score));
+  const rows = history.slice(0, 60).map(h => {
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `<tr>
+      <td>${dateStr}</td>
+      <td>${h.cat}</td>
+      <td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td>
+      <td>${h.score}%</td>
+      <td>${Math.floor(h.timeSec/60)}:${(h.timeSec%60).toString().padStart(2,'0')}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `
+    <div class="hist-summary">
+      <div><span>${totalAttempts}</span><small>Attempts</small></div>
+      <div><span>${avgScore}%</span><small>Avg Score</small></div>
+      <div><span>${bestOverall}%</span><small>Best Score</small></div>
+    </div>
+    <table class="hist-table">
+      <tr><th>Date</th><th>Category</th><th>Mode</th><th>Score</th><th>Time</th></tr>
+      ${rows}
+    </table>
+  `;
+  showView('view-history');
+}
+
+loadHistory();
+</script>
+</body>
+</html>
