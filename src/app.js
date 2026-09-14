@@ -1,6 +1,10 @@
 import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS } from './difficulties.js';
+import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
+
+document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
+document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
 
 const HISTORY_KEY = 'scripture-history-v3';
 
@@ -65,7 +69,8 @@ function renderCategories() {
     div.className = 'cat-card';
     div.onclick = () => openModes(group.cat);
     div.innerHTML = `
-      <div>
+      <div class="cat-icon">${CATEGORY_ICONS[group.cat] || ''}</div>
+      <div class="cat-info">
         <div class="cat-name">${group.cat}</div>
         <div class="cat-attempts">${attempts} attempt${attempts === 1 ? '' : 's'}</div>
       </div>
