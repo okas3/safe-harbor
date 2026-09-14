@@ -12,47 +12,28 @@
       <h1><span class="h1-icon" id="h1IconLeft"></span>Anchor Scriptures<span class="h1-icon" id="h1IconRight"></span></h1>
       <div class="subtitle">Hidden in the heart, so it rises before the escape does</div>
 
-      <div id="view-categories" class="view active">
+      <div id="view-home" class="view active">
         <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
-        <div class="cat-list" id="catList"></div>
-      </div>
 
-      <div id="view-modes" class="view">
-        <div class="top-row">
-          <button class="btn" onclick="goHome()">← Categories</button>
-          <span id="modeCatTitle"></span>
-        </div>
-        <div class="mode-list">
-          <div class="mode-card" onclick="pickMode('fade')">
-            <div class="mode-name">Fathom by Fathom</div>
-            <div class="mode-desc">Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.</div>
-          </div>
-          <div class="mode-card" onclick="pickMode('letters')">
-            <div class="mode-name">Chain of Initials</div>
-            <div class="mode-desc">Only initials shown. Recite from the skeleton, then type the full verse to be graded.</div>
-          </div>
-          <div class="mode-card" onclick="pickMode('type')">
-            <div class="mode-name">By Heart</div>
-            <div class="mode-desc">Just the reference. Type the whole verse. Graded word by word.</div>
-          </div>
-          <div class="mode-card" onclick="pickMode('match')">
-            <div class="mode-name">Safe Harbor</div>
-            <div class="mode-desc">All references and verses laid out at once. Tap to pair them correctly, race the clock.</div>
-          </div>
-        </div>
-      </div>
+        <div class="cat-header" id="catHeader"></div>
+        <div class="verse-list" id="verseList"></div>
 
-      <div id="view-difficulty" class="view">
-        <div class="top-row">
-          <button class="btn" onclick="showView('view-modes')">← Modes</button>
-          <span id="diffCatTitle"></span>
+        <div class="setup-section">
+          <div class="setup-label">Game Mode</div>
+          <select class="mode-select" id="modeSelect"></select>
+          <div class="mode-desc" id="modeDescText"></div>
         </div>
-        <div class="diff-list" id="diffList"></div>
+        <button class="btn primary wide start-btn" onclick="startPractice()">Start Quiz</button>
+
+        <div class="cat-switcher">
+          <div class="setup-label">Categories</div>
+          <div class="pill-row" id="catPills"></div>
+        </div>
       </div>
 
       <div id="view-practice" class="view">
         <div class="top-row">
-          <button class="btn" onclick="showView('view-modes')">← Modes</button>
+          <button class="btn" onclick="showView('view-home')">← Home</button>
           <span id="catTitle"></span>
         </div>
         <div class="progress-line" id="progressLine"></div>
@@ -64,7 +45,7 @@
 
       <div id="view-match" class="view">
         <div class="top-row">
-          <button class="btn" onclick="showView('view-modes')">← Modes</button>
+          <button class="btn" onclick="showView('view-home')">← Home</button>
           <span id="matchTitle"></span>
         </div>
         <div class="match-stats" id="matchStats"></div>
@@ -82,7 +63,7 @@
           <div class="score-actions">
             <button class="btn primary wide" onclick="replaySession()">Play Again</button>
             <button class="btn wide" id="reviewBtn" onclick="toggleReview()">Review</button>
-            <button class="btn wide" onclick="goHome()">Back to Categories</button>
+            <button class="btn wide" onclick="goHome()">Back to Home</button>
           </div>
           <div class="review-list" id="reviewList" style="display:none;"></div>
         </div>
@@ -90,7 +71,7 @@
 
       <div id="view-history" class="view">
         <div class="top-row">
-          <button class="btn" onclick="goHome()">← Categories</button>
+          <button class="btn" onclick="goHome()">← Home</button>
           <span>History</span>
         </div>
         <div id="historyBody"></div>

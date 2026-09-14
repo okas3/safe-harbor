@@ -8,12 +8,25 @@ document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
 
 const HISTORY_KEY = 'scripture-history-v3';
 
+const MODES = [
+  { id: 'fade', label: 'Fathom by Fathom', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
+  { id: 'letters', label: 'Chain of Initials', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
+  { id: 'type', label: 'By Heart', desc: 'Just the reference. Type the whole verse. Graded word by word.' },
+  { id: 'match', label: 'Safe Harbor', desc: 'All references and verses laid out at once. Tap to pair them correctly, race the clock.' }
+];
+function diffsForMode(mode) {
+  return mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : mode === 'match' ? MATCH_DIFFS : null;
+}
+
 let state = {
-  cat: null, mode: null, difficulty: null,
+  cat: DATA[0].cat, mode: 'fade', difficulty: FADE_DIFFS[0],
   sessionVerses: [], stepIndex: 0, results: [],
   startTime: 0, lastConfig: null
 };
 let matchState = null;
+
+buildModeOptions();
+document.getElementById('modeSelect').addEventListener('change', onModeSelectChange);
 
 let history = [];
 let db = null;
@@ -38,7 +51,7 @@ async function loadHistory() {
     try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
     catch (e2) { history = []; }
   }
-  renderCategories();
+  renderHome();
 }
 async function saveHistory() {
   try {
@@ -59,61 +72,79 @@ function attemptsFor(cat) {
   return history.filter(h => h.cat === cat).length;
 }
 
-function renderCategories() {
-  const list = document.getElementById('catList');
-  list.innerHTML = '';
-  DATA.forEach(group => {
-    const best = bestScoreFor(group.cat);
-    const attempts = attemptsFor(group.cat);
+// Builds the <optgroup>/<option> tree once. Option values encode
+// "mode:diffId" (or just "mode" for By Heart, which has no tiers) so
+// the change handler can recover both state.mode and state.difficulty
+// from a single select value.
+function buildModeOptions() {
+  const select = document.getElementById('modeSelect');
+  select.innerHTML = MODES.map(m => {
+    const diffs = diffsForMode(m.id);
+    const options = diffs
+      ? diffs.map(d => `<option value="${m.id}:${d.id}">${d.name}</option>`).join('')
+      : `<option value="${m.id}">${m.label}</option>`;
+    return `<optgroup label="${m.label}">${options}</optgroup>`;
+  }).join('');
+}
+
+function onModeSelectChange() {
+  const [modeId, diffId] = document.getElementById('modeSelect').value.split(':');
+  state.mode = modeId;
+  const diffs = diffsForMode(modeId);
+  state.difficulty = diffs ? diffs.find(d => d.id === diffId) : null;
+  document.getElementById('modeDescText').textContent = MODES.find(m => m.id === modeId).desc;
+}
+
+function renderHome() {
+  const group = DATA.find(g => g.cat === state.cat);
+
+  document.getElementById('catHeader').innerHTML = `
+    <div class="cat-header-icon">${CATEGORY_ICONS[state.cat] || ''}</div>
+    <div class="cat-header-name">${state.cat}</div>
+  `;
+
+  document.getElementById('verseList').innerHTML = group.verses.map(v => `
+    <div class="verse-card">
+      <div class="verse-card-ref">${v.ref}</div>
+      <div class="verse-card-text">${v.text}</div>
+    </div>
+  `).join('');
+
+  const select = document.getElementById('modeSelect');
+  select.value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
+  document.getElementById('modeDescText').textContent = MODES.find(m => m.id === state.mode).desc;
+
+  const catPills = document.getElementById('catPills');
+  catPills.innerHTML = '';
+  DATA.forEach(g => {
+    const best = bestScoreFor(g.cat);
     const div = document.createElement('div');
-    div.className = 'cat-card';
-    div.onclick = () => openModes(group.cat);
+    div.className = 'cat-pill' + (state.cat === g.cat ? ' active' : '');
+    div.title = g.cat + (best === null ? ' · not attempted yet' : ` · best ${best}%`);
     div.innerHTML = `
-      <div class="cat-icon">${CATEGORY_ICONS[group.cat] || ''}</div>
-      <div class="cat-info">
-        <div class="cat-name">${group.cat}</div>
-        <div class="cat-attempts">${attempts} attempt${attempts === 1 ? '' : 's'}</div>
-      </div>
-      <div>
-        <div class="cat-best">${best === null ? '—' : best + '%'}</div>
-        <div class="cat-best-label">best score</div>
-      </div>
+      <span class="cat-pill-icon">${CATEGORY_ICONS[g.cat] || ''}</span>
+      ${best === null ? '' : `<span class="cat-pill-badge">${best}%</span>`}
     `;
-    list.appendChild(div);
+    div.onclick = () => selectCategory(g.cat);
+    catPills.appendChild(div);
   });
 }
+
+function selectCategory(cat) {
+  state.cat = cat;
+  renderHome();
+}
+
+function startPractice() { beginSession(); }
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goHome() { renderCategories(); showView('view-categories'); }
-
-function openModes(cat) {
-  state.cat = cat;
-  document.getElementById('modeCatTitle').textContent = cat;
-  showView('view-modes');
-}
-
-function pickMode(mode) {
-  state.mode = mode;
-  if (mode === 'type') { state.difficulty = null; beginSession(); return; }
-  document.getElementById('diffCatTitle').textContent = state.cat + ' · ' + modeLabel(mode);
-  const list = document.getElementById('diffList');
-  list.innerHTML = '';
-  const diffs = mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : MATCH_DIFFS;
-  diffs.forEach(d => {
-    const div = document.createElement('div');
-    div.className = 'diff-card';
-    div.onclick = () => { state.difficulty = d; beginSession(); };
-    div.innerHTML = `<div><div class="diff-name">${d.name}</div><div class="diff-sub">${d.sub}</div></div><div class="diff-chevron">›</div>`;
-    list.appendChild(div);
-  });
-  showView('view-difficulty');
-}
+function goHome() { renderHome(); showView('view-home'); }
 
 function modeLabel(m) {
-  return m === 'fade' ? 'Fathom by Fathom' : m === 'letters' ? 'Chain of Initials' : m === 'type' ? 'By Heart' : 'Safe Harbor';
+  return MODES.find(x => x.id === m)?.label || m;
 }
 
 function normWord(w) {
@@ -435,8 +466,8 @@ function openHistory() {
 // implicitly global, so the ones referenced from index.html's
 // onclick attributes must be attached to window explicitly.
 Object.assign(window, {
-  openHistory, goHome, pickMode, showView, replaySession, toggleReview,
-  checkFade, nextStep, checkType
+  openHistory, goHome, showView, replaySession, toggleReview,
+  checkFade, nextStep, checkType, startPractice
 });
 
 loadHistory();
