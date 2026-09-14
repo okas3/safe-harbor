@@ -16,7 +16,10 @@
         <div class="cat-header" id="catHeader"></div>
 
         <div id="stageBack" class="top-row" style="display:none;">
-          <button class="btn" onclick="cancelSession()">← Back to Verses</button>
+          <div class="stage-back-left">
+            <button class="btn" onclick="cancelSession()">← Back to Verses</button>
+            <span id="roundTimer" class="round-timer"></span>
+          </div>
           <span id="stageTitle"></span>
         </div>
 
@@ -53,6 +56,10 @@
               <button class="btn wide" onclick="cancelSession()">Back to Verses</button>
             </div>
             <div class="review-list" id="reviewList" style="display:none;"></div>
+          </div>
+          <div class="score-history">
+            <div class="setup-label">Recent Attempts</div>
+            <div id="scoreHistoryBody"></div>
           </div>
         </div>
 

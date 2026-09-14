@@ -49,6 +49,11 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 
 .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; }
 .top-row span { color: var(--ink-dim); font-size: 13px; }
+.stage-back-left { display: flex; align-items: center; gap: 10px; }
+.round-timer {
+  font-family: 'JetBrains Mono', monospace; color: var(--brass); font-size: 13px;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.5px;
+}
 .btn {
   background: none; border: 1px solid var(--border); color: var(--ink-dim);
   padding: 8px 14px; border-radius: 3px; font-family: 'Instrument Sans', -apple-system, sans-serif;
@@ -189,6 +194,7 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 .score-line { text-align: center; font-size: 13px; color: var(--ink-dim); margin: 6px 0; }
 
 .score-screen { text-align: center; padding: 20px 10px; }
+.score-history { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
 .score-big {
   font-family: 'JetBrains Mono', monospace; font-size: 46px; color: var(--brass-bright);
   font-weight: 600; font-variant-numeric: tabular-nums;

@@ -155,7 +155,34 @@ function showStage(name, title) {
   document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
   document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
+
+  // Live-counting timer, running only while a round is actually in
+  // progress (not idle browsing, not the finished score screen, which
+  // already shows the final frozen time as a stat tile).
+  const isLive = name === 'practiceArea' || name === 'matchArea';
+  const timerEl = document.getElementById('roundTimer');
+  if (isLive) {
+    startTimer(name === 'matchArea' ? matchState.startTime : state.startTime, timerEl);
+  } else {
+    stopTimer();
+    timerEl.textContent = '';
+  }
 }
+
+let timerInterval = null;
+function startTimer(startTime, el) {
+  stopTimer();
+  const tick = () => {
+    const sec = Math.floor((Date.now() - startTime) / 1000);
+    el.textContent = `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
+  };
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
 function cancelSession() {
   matchState = null;
   showStage('verseList');
@@ -437,6 +464,7 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
+  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(8);
   const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('scoreArea', title);
 }
@@ -445,17 +473,16 @@ function toggleReview() {
   el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 
-function openHistory() {
-  const body = document.getElementById('historyBody');
+// Shared between the full History view and the compact preview on the
+// score screen — only the row limit differs.
+function historyMarkup(limit) {
   if (!history.length) {
-    body.innerHTML = `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
-    showView('view-history');
-    return;
+    return `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
   }
   const totalAttempts = history.length;
   const avgScore = Math.round(history.reduce((s, h) => s + h.score, 0) / totalAttempts);
   const bestOverall = Math.max(...history.map(h => h.score));
-  const rows = history.slice(0, 60).map(h => {
+  const rows = history.slice(0, limit).map(h => {
     const d = new Date(h.ts);
     const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     return `<tr>
@@ -466,7 +493,7 @@ function openHistory() {
       <td>${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}</td>
     </tr>`;
   }).join('');
-  body.innerHTML = `
+  return `
     <div class="hist-summary">
       <div><span>${totalAttempts}</span><small>Attempts</small></div>
       <div><span>${avgScore}%</span><small>Avg Score</small></div>
@@ -477,6 +504,10 @@ function openHistory() {
       ${rows}
     </table>
   `;
+}
+
+function openHistory() {
+  document.getElementById('historyBody').innerHTML = historyMarkup(60);
   showView('view-history');
 }
 
