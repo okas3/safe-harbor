@@ -120,9 +120,9 @@ function renderHome() {
     const best = bestScoreFor(g.cat);
     const div = document.createElement('div');
     div.className = 'cat-pill' + (state.cat === g.cat ? ' active' : '');
-    div.title = g.cat + (best === null ? ' · not attempted yet' : ` · best ${best}%`);
     div.innerHTML = `
       <span class="cat-pill-icon">${CATEGORY_ICONS[g.cat] || ''}</span>
+      <span class="cat-pill-label">${g.cat}</span>
       ${best === null ? '' : `<span class="cat-pill-badge">${best}%</span>`}
     `;
     div.onclick = () => selectCategory(g.cat);

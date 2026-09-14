@@ -103,22 +103,21 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .mode-desc { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 8px; }
 .start-btn { margin-bottom: 26px; }
 
-.cat-switcher { padding-top: 18px; border-top: 1px solid var(--border); }
+.cat-switcher { padding-top: 18px; border-top: 1px solid var(--border); margin-bottom: 20px; }
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .cat-pill {
-  position: relative; width: 40px; height: 40px; flex-shrink: 0; color: var(--ink-dim);
-  background: var(--surface); border: 1px solid var(--border); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; padding: 9px;
-  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  display: flex; align-items: center; gap: 7px; color: var(--ink-dim);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 7px 12px 7px 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
 .cat-pill:hover { border-color: var(--brass-dim); }
-.cat-pill.active { border-color: var(--brass); color: var(--brass); background: rgba(193,154,91,0.1); }
-.cat-pill-icon { width: 100%; height: 100%; display: block; }
+.cat-pill.active { border-color: var(--brass); color: var(--brass-bright); background: rgba(193,154,91,0.1); }
+.cat-pill-icon { width: 18px; height: 18px; flex-shrink: 0; }
 .cat-pill-icon svg { width: 100%; height: 100%; display: block; }
+.cat-pill-label { font-size: 12.5px; white-space: nowrap; }
 .cat-pill-badge {
-  position: absolute; bottom: -5px; right: -5px; font-size: 9px; line-height: 1;
-  background: var(--brass); color: #1a1206; padding: 2px 4px; border-radius: 8px;
-  font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  font-size: 10px; line-height: 1; background: var(--brass); color: #1a1206;
+  padding: 2px 5px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
 }
 
 .chain-line { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
