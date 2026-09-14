@@ -184,7 +184,7 @@ function beginSession() {
 
   if (state.mode === 'match') { beginMatch(); return; }
 
-  const title = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('practiceArea', title);
   showStep();
 }
@@ -343,7 +343,7 @@ function beginMatch() {
   matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
 
   renderMatch();
-  showStage('matchArea', state.cat + ' · ' + modeLabel(state.mode) + ' · ' + state.difficulty.name);
+  showStage('matchArea', modeLabel(state.mode) + ' · ' + state.difficulty.name);
 }
 
 function renderMatch() {
@@ -437,7 +437,7 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  const title = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('scoreArea', title);
 }
 function toggleReview() {
