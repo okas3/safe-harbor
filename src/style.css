@@ -230,12 +230,23 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 .hist-summary { display: flex; justify-content: space-around; margin-bottom: 18px; text-align: center; }
 .hist-summary div span { display: block; font-size: 23px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 .hist-summary div small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
-table.hist-table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+table.hist-table {
+  width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px;
+  font-family: 'Instrument Sans', -apple-system, sans-serif;
+}
 table.hist-table th {
   text-align: left; color: var(--ink-faint); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--border);
   font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; font-family: 'JetBrains Mono', monospace;
 }
-table.hist-table td { padding: 7px 4px; border-bottom: 1px solid var(--border); }
+table.hist-table td { padding: 7px 4px; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Score and Time are always the last two columns (in both the full
+   History table and the score screen's leaderboard) — pin them to a
+   fixed width and right-align like the numbers they are, letting
+   table-layout:fixed split the remaining width evenly across
+   whichever columns come before them. */
+table.hist-table th:nth-last-child(-n+2), table.hist-table td:nth-last-child(-n+2) {
+  width: 58px; text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;
+}
 table.hist-table tr.hi-score-row td { color: var(--brass-bright); font-weight: 600; }
 table.hist-table tr.hi-score-row td:first-child { border-left: 2px solid var(--brass); padding-left: 6px; }
 .empty-hist { text-align: center; color: var(--ink-faint); padding: 30px 10px; font-size: 14px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
