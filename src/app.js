@@ -744,8 +744,9 @@ function toggleReview() {
 // the compact preview on the score screen (filtered to the category +
 // mode just played, where those two columns and the avg-score tile
 // would just repeat the same value on every row and are dropped).
-function historyMarkup(limit, filter) {
+function historyMarkup(limit, filter, catFilter) {
   let entries = filter ? history.filter(h => h.cat === filter.cat && h.mode === filter.mode) : history;
+  if (catFilter) entries = entries.filter(h => catFilter.includes(h.cat));
   if (!entries.length) {
     return `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
   }
@@ -792,8 +793,39 @@ function historyMarkup(limit, filter) {
   `;
 }
 
+let historyTagFilter = null;
+
+function allTags() {
+  const set = new Set();
+  DATA.forEach(g => g.verses.forEach(v => (v.tags || []).forEach(t => set.add(t))));
+  return [...set].sort();
+}
+
+// A history row is per-category-session, not per-verse, so "filter by
+// tag" means "show sessions from categories that contain a tagged
+// verse" — the closest a category-scoped log can get to verse-level
+// tags. Currently a no-op in practice (every verse ships with an
+// empty tags[] — real tag values weren't fabricated), but the wiring
+// is real and activates the moment tags get populated.
+function categoriesWithTag(tag) {
+  return DATA.filter(g => g.verses.some(v => (v.tags || []).includes(tag))).map(g => g.cat);
+}
+
 function openHistory() {
-  document.getElementById('historyBody').innerHTML = historyMarkup(60);
+  const tags = allTags();
+  const tagRow = document.getElementById('historyTagRow');
+  if (tags.length) {
+    tagRow.style.display = 'flex';
+    const chips = tags.map(t => ({ label: t, tag: t })).concat([{ label: 'All', tag: '' }]);
+    tagRow.innerHTML = chips.map(c => `<div class="pill${(historyTagFilter || '') === c.tag ? ' active' : ''}">${c.label}</div>`).join('');
+    tagRow.querySelectorAll('.pill').forEach((el, i) => {
+      el.onclick = () => { historyTagFilter = chips[i].tag || null; openHistory(); };
+    });
+  } else {
+    tagRow.style.display = 'none';
+  }
+  const catFilter = historyTagFilter ? categoriesWithTag(historyTagFilter) : null;
+  document.getElementById('historyBody').innerHTML = historyMarkup(60, null, catFilter);
   showView('view-history');
 }
 

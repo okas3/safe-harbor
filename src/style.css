@@ -154,6 +154,12 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 
 .cat-switcher { padding-top: 18px; border-top: 1px solid var(--border); margin-bottom: 20px; }
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  background: var(--surface); border: 1px solid var(--border); color: var(--ink-dim);
+  padding: 6px 12px; border-radius: 20px; font-size: 12.5px; cursor: pointer; transition: border-color 0.15s;
+}
+.pill:hover { border-color: var(--brass-dim); }
+.pill.active { border-color: var(--brass); color: var(--brass-bright); background: rgba(193,154,91,0.1); }
 .cat-pill {
   display: flex; align-items: center; gap: 7px; color: var(--ink-dim);
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
