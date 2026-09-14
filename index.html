@@ -14,58 +14,62 @@
 
       <div id="view-home" class="view active">
         <div class="cat-header" id="catHeader"></div>
+
+        <div id="stageBack" class="top-row" style="display:none;">
+          <button class="btn" onclick="cancelSession()">← Back to Verses</button>
+          <span id="stageTitle"></span>
+        </div>
+
+        <!-- Idle: verse previews for the selected category -->
         <div class="verse-list" id="verseList"></div>
 
-        <div class="quiz-bar">
-          <button class="btn primary start-btn" onclick="startPractice()">Start Quiz</button>
-          <span class="quiz-bar-label">Mode</span>
-          <select class="mode-select" id="modeSelect"></select>
-        </div>
-        <div class="mode-desc" id="modeDescText"></div>
-
-        <div class="cat-switcher">
-          <div class="setup-label">Categories</div>
-          <div class="pill-row" id="catPills"></div>
-        </div>
-
-        <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
-      </div>
-
-      <div id="view-practice" class="view">
-        <div class="top-row">
-          <button class="btn" onclick="showView('view-home')">← Home</button>
-          <span id="catTitle"></span>
-        </div>
-        <div class="progress-line" id="progressLine"></div>
-        <div class="card-stage">
-          <div class="flashcard" id="flashcard"></div>
-        </div>
-        <div id="rateRow" class="rate-row" style="display:none;"></div>
-      </div>
-
-      <div id="view-match" class="view">
-        <div class="top-row">
-          <button class="btn" onclick="showView('view-home')">← Home</button>
-          <span id="matchTitle"></span>
-        </div>
-        <div class="match-stats" id="matchStats"></div>
-        <div class="match-grid">
-          <div class="match-col" id="matchRefCol"></div>
-          <div class="match-col" id="matchTextCol"></div>
-        </div>
-      </div>
-
-      <div id="view-score" class="view">
-        <div class="score-screen">
-          <div class="score-big" id="scoreBig">—</div>
-          <div class="score-sub">Score</div>
-          <div class="score-meta" id="scoreMeta"></div>
-          <div class="score-actions">
-            <button class="btn primary wide" onclick="replaySession()">Play Again</button>
-            <button class="btn wide" id="reviewBtn" onclick="toggleReview()">Review</button>
-            <button class="btn wide" onclick="goHome()">Back to Home</button>
+        <!-- Active: Fathom by Fathom / Chain of Initials / By Heart -->
+        <div id="practiceArea" style="display:none;">
+          <div class="progress-line" id="progressLine"></div>
+          <div class="card-stage">
+            <div class="flashcard" id="flashcard"></div>
           </div>
-          <div class="review-list" id="reviewList" style="display:none;"></div>
+          <div id="rateRow" class="rate-row" style="display:none;"></div>
+        </div>
+
+        <!-- Active: Safe Harbor match -->
+        <div id="matchArea" style="display:none;">
+          <div class="match-stats" id="matchStats"></div>
+          <div class="match-grid">
+            <div class="match-col" id="matchRefCol"></div>
+            <div class="match-col" id="matchTextCol"></div>
+          </div>
+        </div>
+
+        <!-- Session result -->
+        <div id="scoreArea" style="display:none;">
+          <div class="score-screen">
+            <div class="score-big" id="scoreBig">—</div>
+            <div class="score-sub">Score</div>
+            <div class="score-meta" id="scoreMeta"></div>
+            <div class="score-actions">
+              <button class="btn primary wide" onclick="replaySession()">Play Again</button>
+              <button class="btn wide" id="reviewBtn" onclick="toggleReview()">Review</button>
+              <button class="btn wide" onclick="cancelSession()">Back to Verses</button>
+            </div>
+            <div class="review-list" id="reviewList" style="display:none;"></div>
+          </div>
+        </div>
+
+        <div id="setupArea">
+          <div class="quiz-bar">
+            <button class="btn primary start-btn" onclick="startPractice()">Start Quiz</button>
+            <span class="quiz-bar-label">Mode</span>
+            <select class="mode-select" id="modeSelect"></select>
+          </div>
+          <div class="mode-desc" id="modeDescText"></div>
+
+          <div class="cat-switcher">
+            <div class="setup-label">Categories</div>
+            <div class="pill-row" id="catPills"></div>
+          </div>
+
+          <div class="home-actions"><button class="btn" onclick="openHistory()">View History</button></div>
         </div>
       </div>
 

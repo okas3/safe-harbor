@@ -141,7 +141,25 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goHome() { renderHome(); showView('view-home'); }
+function goHome() { renderHome(); showView('view-home'); cancelSession(); }
+
+// The home screen has one "stage" area that's either the idle verse
+// previews, or one of the three active-session UIs, never more than
+// one at once — swapping between them is a same-page content swap
+// (no showView/navigation), so the category header, mode picker, and
+// category switcher all stay in place while a session runs.
+const STAGES = ['verseList', 'practiceArea', 'matchArea', 'scoreArea'];
+function showStage(name, title) {
+  STAGES.forEach(id => { document.getElementById(id).style.display = (id === name) ? '' : 'none'; });
+  const isIdle = name === 'verseList';
+  document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
+  document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
+  if (title !== undefined) document.getElementById('stageTitle').textContent = title;
+}
+function cancelSession() {
+  matchState = null;
+  showStage('verseList');
+}
 
 function modeLabel(m) {
   return MODES.find(x => x.id === m)?.label || m;
@@ -166,8 +184,8 @@ function beginSession() {
 
   if (state.mode === 'match') { beginMatch(); return; }
 
-  document.getElementById('catTitle').textContent = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
-  showView('view-practice');
+  const title = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  showStage('practiceArea', title);
   showStep();
 }
 
@@ -324,9 +342,8 @@ function beginMatch() {
 
   matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
 
-  document.getElementById('matchTitle').textContent = state.cat + ' · match · ' + state.difficulty.name;
   renderMatch();
-  showView('view-match');
+  showStage('matchArea', state.cat + ' · match · ' + state.difficulty.name);
 }
 
 function renderMatch() {
@@ -417,7 +434,7 @@ function showScoreScreen(score, timeSec, results, extraLine) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  showView('view-score');
+  showStage('scoreArea', 'Results');
 }
 function toggleReview() {
   const el = document.getElementById('reviewList');
@@ -467,7 +484,7 @@ function openHistory() {
 // onclick attributes must be attached to window explicitly.
 Object.assign(window, {
   openHistory, goHome, showView, replaySession, toggleReview,
-  checkFade, nextStep, checkType, startPractice
+  checkFade, nextStep, checkType, startPractice, cancelSession
 });
 
 loadHistory();
