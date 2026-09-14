@@ -464,7 +464,7 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(8, { cat: state.cat, mode: modeLabel(state.mode) });
+  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(5, { cat: state.cat, mode: modeLabel(state.mode) });
   const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('scoreArea', title);
 }
@@ -478,18 +478,24 @@ function toggleReview() {
 // mode just played, where those two columns and the avg-score tile
 // would just repeat the same value on every row and are dropped).
 function historyMarkup(limit, filter) {
-  const entries = filter ? history.filter(h => h.cat === filter.cat && h.mode === filter.mode) : history;
+  let entries = filter ? history.filter(h => h.cat === filter.cat && h.mode === filter.mode) : history;
   if (!entries.length) {
     return `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
   }
+  // Filtered = the score screen's leaderboard, not a log: rank by best
+  // score first, fastest time as the tiebreaker, so row one is
+  // literally the record to beat. Unfiltered (the full History view)
+  // stays in the natural most-recent-first order.
+  if (filter) entries = entries.slice().sort((a, b) => b.score - a.score || a.timeSec - b.timeSec);
   const totalAttempts = entries.length;
   const bestOverall = Math.max(...entries.map(h => h.score));
-  const rows = entries.slice(0, limit).map(h => {
+  const rows = entries.slice(0, limit).map((h, i) => {
     const d = new Date(h.ts);
     const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const time = `${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}`;
+    const topRow = filter && i === 0 ? ' class="hi-score-row"' : '';
     return filter
-      ? `<tr><td>${dateStr}</td><td>${h.difficulty || '—'}</td><td>${h.score}%</td><td>${time}</td></tr>`
+      ? `<tr${topRow}><td>${dateStr}</td><td>${h.difficulty || '—'}</td><td>${h.score}%</td><td>${time}</td></tr>`
       : `<tr><td>${dateStr}</td><td>${h.cat}</td><td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td><td>${h.score}%</td><td>${time}</td></tr>`;
   }).join('');
   const headerCols = filter
