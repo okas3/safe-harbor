@@ -2,6 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
 document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
@@ -276,16 +277,19 @@ function checkFade() {
   const inputs = document.querySelectorAll('.blank-input');
   if (inputs.length && inputs[0].disabled) { state.stepIndex++; showStep(); return; }
   let correct = 0;
+  const missed = [];
   inputs.forEach(inp => {
     const ok = normWord(inp.value) === normWord(inp.dataset.answer);
     inp.classList.add(ok ? 'ok' : 'bad');
-    if (!ok) inp.value = inp.dataset.answer;
+    if (!ok) { inp.value = inp.dataset.answer; missed.push(normWord(inp.dataset.answer)); }
     inp.disabled = true;
     if (ok) correct++;
   });
   const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
   const v = state.sessionVerses[state.stepIndex];
   state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct` });
+  recordRecall(v.ref, pct, 'cued');
+  recordWordMisses(v.ref, missed);
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
 
@@ -335,9 +339,11 @@ function checkType() {
   const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
   const actual = v.text.split(' ');
   let correctCount = 0;
+  const missed = [];
   const diffHtml = actual.map((w, i) => {
     const match = typed[i] && normWord(typed[i]) === normWord(w);
     if (match) correctCount++;
+    else missed.push(normWord(w));
     return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
   }).join(' ');
   const pct = Math.round((correctCount / actual.length) * 100);
@@ -346,6 +352,8 @@ function checkType() {
     <div class="diff-line">${diffHtml}</div>
   `;
   state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct` });
+  recordRecall(v.ref, pct, 'free');
+  recordWordMisses(v.ref, missed);
   btn.dataset.checked = '1';
   btn.innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
@@ -391,6 +399,7 @@ function checkReverse(btn, correctRef) {
     if (o.dataset.ref === correctRef) o.classList.add('ok');
     else if (o === btn) o.classList.add('bad');
   });
+  if (ok) recordRecognition(correctRef);
   state.results.push({ ref: correctRef, score: ok ? 100 : 0, detail: ok ? 'Picked the right reference' : `Picked ${btn.dataset.ref}` });
   document.getElementById('rateRow').style.display = 'flex';
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
@@ -468,6 +477,11 @@ function selectText(ref) {
 function finishMatch() {
   const timeSec = Math.round((Date.now() - matchState.startTime) / 1000);
   const score = Math.round((matchState.total / (matchState.total + matchState.mistakes)) * 100);
+  // Every pair in the game ends up correctly matched by the time this
+  // fires (that's the win condition) — each one counts as a
+  // recognition success, regardless of how many wrong guesses it took
+  // along the way.
+  matchState.pairSource.forEach(p => recordRecognition(p.ref));
   logAttempt(state.cat, 'match', state.difficulty.name, score, timeSec);
   showScoreScreen(score, timeSec, [], [
     { label: 'Pairs', value: matchState.total },
@@ -587,4 +601,4 @@ Object.assign(window, {
   checkFade, nextStep, checkType, startPractice, cancelSession
 });
 
-loadHistory();
+loadProgress().then(loadHistory);
