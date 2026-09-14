@@ -19,7 +19,7 @@ function diffsForMode(mode) {
 }
 
 let state = {
-  cat: DATA[0].cat, mode: 'fade', difficulty: FADE_DIFFS[0],
+  cat: DATA[0].cat, mode: 'match', difficulty: MATCH_DIFFS[0],
   sessionVerses: [], stepIndex: 0, results: [],
   startTime: 0, lastConfig: null
 };
