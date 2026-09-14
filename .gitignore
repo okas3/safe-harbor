@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Stray screenshots that sometimes land in the project root
+Untitled*.png
