@@ -25,3 +25,6 @@ dist-ssr
 
 # Stray screenshots that sometimes land in the project root
 Untitled*.png
+
+# Claude Code local tool config
+.claude/

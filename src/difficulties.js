@@ -15,3 +15,8 @@ export const MATCH_DIFFS = [
   { id: 'easy', name: 'Easy — One Category' },
   { id: 'hard', name: 'Hard — Mixed Categories' }
 ];
+
+export const REVERSE_DIFFS = [
+  { id: 'easy', name: 'Easy — One Category' },
+  { id: 'hard', name: 'Hard — Mixed Categories' }
+];

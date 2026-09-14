@@ -1,6 +1,6 @@
 import './style.css';
 import { DATA } from './verses.js';
-import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS } from './difficulties.js';
+import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -10,12 +10,17 @@ const HISTORY_KEY = 'scripture-history-v3';
 
 const MODES = [
   { id: 'match', label: 'Safe Harbor', hint: 'Match the Pairs', desc: 'All references and verses laid out at once. Tap to pair them correctly, race the clock.' },
+  { id: 'reverse', label: 'Dead Reckoning', hint: 'Name the Reference', desc: 'Read the verse with no reference shown, then pick which passage it comes from.' },
   { id: 'fade', label: 'Fathom by Fathom', hint: 'Fill in the Blanks', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
 function diffsForMode(mode) {
-  return mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : mode === 'match' ? MATCH_DIFFS : null;
+  return mode === 'fade' ? FADE_DIFFS
+    : mode === 'letters' ? LETTER_DIFFS
+    : mode === 'match' ? MATCH_DIFFS
+    : mode === 'reverse' ? REVERSE_DIFFS
+    : null;
 }
 
 let state = {
@@ -234,6 +239,7 @@ function showStep() {
   const v = state.sessionVerses[state.stepIndex];
   if (state.mode === 'fade') renderFade(v);
   else if (state.mode === 'letters') renderLettersIntro(v);
+  else if (state.mode === 'reverse') renderReverse(v);
   else renderType(v);
 }
 
@@ -348,6 +354,46 @@ function nextStep() {
   row.dataset.checked = '';
   state.stepIndex++;
   showStep();
+}
+
+function renderReverse(v) {
+  // Distractor pool: the rest of the current category always; on Hard,
+  // also pull in one other whole category for a wider, tougher pool —
+  // same pattern as Safe Harbor's difficulty split.
+  const group = DATA.find(g => g.cat === state.cat);
+  let pool = group.verses.filter(x => x.ref !== v.ref).map(x => x.ref);
+  if (state.difficulty.id === 'hard') {
+    const others = DATA.filter(g => g.cat !== state.cat);
+    const other = others[Math.floor(Math.random() * others.length)];
+    pool = pool.concat(other.verses.map(x => x.ref));
+  }
+  pool = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+  const options = [v.ref, ...pool].sort(() => Math.random() - 0.5);
+
+  const card = document.getElementById('flashcard');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · dead reckoning</div>
+    <div class="verse-text">${v.text}</div>
+    <div class="ref-options" id="refOptions">
+      ${options.map(r => `<button class="ref-option" data-ref="${r.replace(/"/g, '&quot;')}">${r}</button>`).join('')}
+    </div>
+  `;
+  document.querySelectorAll('.ref-option').forEach(btn => {
+    btn.onclick = () => checkReverse(btn, v.ref);
+  });
+  document.getElementById('rateRow').style.display = 'none';
+}
+function checkReverse(btn, correctRef) {
+  if (btn.disabled) return;
+  const ok = btn.dataset.ref === correctRef;
+  document.querySelectorAll('.ref-option').forEach(o => {
+    o.disabled = true;
+    if (o.dataset.ref === correctRef) o.classList.add('ok');
+    else if (o === btn) o.classList.add('bad');
+  });
+  state.results.push({ ref: correctRef, score: ok ? 100 : 0, detail: ok ? 'Picked the right reference' : `Picked ${btn.dataset.ref}` });
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
 
 function beginMatch() {
