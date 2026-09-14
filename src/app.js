@@ -464,7 +464,7 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(8);
+  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(8, { cat: state.cat, mode: modeLabel(state.mode) });
   const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('scoreArea', title);
 }
@@ -473,34 +473,47 @@ function toggleReview() {
   el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 
-// Shared between the full History view and the compact preview on the
-// score screen — only the row limit differs.
-function historyMarkup(limit) {
-  if (!history.length) {
+// Shared between the full History view (no filter, every column) and
+// the compact preview on the score screen (filtered to the category +
+// mode just played, where those two columns and the avg-score tile
+// would just repeat the same value on every row and are dropped).
+function historyMarkup(limit, filter) {
+  const entries = filter ? history.filter(h => h.cat === filter.cat && h.mode === filter.mode) : history;
+  if (!entries.length) {
     return `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
   }
-  const totalAttempts = history.length;
-  const avgScore = Math.round(history.reduce((s, h) => s + h.score, 0) / totalAttempts);
-  const bestOverall = Math.max(...history.map(h => h.score));
-  const rows = history.slice(0, limit).map(h => {
+  const totalAttempts = entries.length;
+  const bestOverall = Math.max(...entries.map(h => h.score));
+  const rows = entries.slice(0, limit).map(h => {
     const d = new Date(h.ts);
     const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `<tr>
-      <td>${dateStr}</td>
-      <td>${h.cat}</td>
-      <td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td>
-      <td>${h.score}%</td>
-      <td>${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}</td>
-    </tr>`;
+    const time = `${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}`;
+    return filter
+      ? `<tr><td>${dateStr}</td><td>${h.difficulty || '—'}</td><td>${h.score}%</td><td>${time}</td></tr>`
+      : `<tr><td>${dateStr}</td><td>${h.cat}</td><td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td><td>${h.score}%</td><td>${time}</td></tr>`;
   }).join('');
+  const headerCols = filter
+    ? `<th>Date</th><th>Difficulty</th><th>Score</th><th>Time</th>`
+    : `<th>Date</th><th>Category</th><th>Mode</th><th>Score</th><th>Time</th>`;
+  // The full History view gets the aggregate tiles (Attempts/Avg/Best);
+  // the score screen's filtered preview skips them entirely — with the
+  // list already scoped to one category+mode, the raw rows below say
+  // more than a summary would, and "Attempts"/"Avg Score" here would
+  // just restate what's visible in a glance down the table.
+  let summary = '';
+  if (!filter) {
+    const avgScore = Math.round(entries.reduce((s, h) => s + h.score, 0) / totalAttempts);
+    summary = `
+      <div class="hist-summary">
+        <div><span>${totalAttempts}</span><small>Attempts</small></div>
+        <div><span>${avgScore}%</span><small>Avg Score</small></div>
+        <div><span>${bestOverall}%</span><small>Best Score</small></div>
+      </div>`;
+  }
   return `
-    <div class="hist-summary">
-      <div><span>${totalAttempts}</span><small>Attempts</small></div>
-      <div><span>${avgScore}%</span><small>Avg Score</small></div>
-      <div><span>${bestOverall}%</span><small>Best Score</small></div>
-    </div>
+    ${summary}
     <table class="hist-table">
-      <tr><th>Date</th><th>Category</th><th>Mode</th><th>Score</th><th>Time</th></tr>
+      <tr>${headerCols}</tr>
       ${rows}
     </table>
   `;
