@@ -90,11 +90,15 @@ drilling, a staple memory-athlete technique).
 
 Status of the above, updated as work lands:
 
-- [ ] 1. Spaced-repetition scheduler
-- [ ] 2. Due-Today review queue
-- [ ] 3. Mastery-gated progression
-- [ ] 4. Weak-word re-drill
-- [ ] 5. Dual-coding/imagery hooks
-- [ ] 6. Phrase-level chunked building
-- [ ] 7. Retention-health stats (leaderboard reframe)
-- [ ] 8. Thematic/tag-based linking
+- [x] 1. Spaced-repetition scheduler — `src/progress.js`, simplified SM-2
+- [x] 2. Due-Today review queue — home screen banner + cross-category queue
+- [x] 3. Mastery-gated progression — new/recognized/cued/free/mastered/maintenance stages, suggested-mode defaults
+- [x] 4. Weak-word re-drill — Weak Link mode
+- [x] 5. Dual-coding/imagery hooks — per-verse text note + image (Vercel Blob), shown during recall modes
+- [x] 6. Phrase-level chunked building — Anchor Chain Build mode
+- [x] 7. Retention-health stats (leaderboard reframe) — Due Today/Mastered/At Risk banner; per-category High Score kept as-is
+- [x] 8. Thematic/tag-based linking — data model (`tags: []` on every verse) + History filter chips, no tag values populated yet
+
+All 8 items shipped. Two review-flow bugs found in testing and fixed:
+stale category header while browsing the cross-category due list, and
+no "next due verse" path after finishing a review-launched session.
