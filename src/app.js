@@ -293,6 +293,11 @@ function showStage(name, title) {
   const isIdle = name === 'verseList';
   document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
   document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
+  // The retention-health banner ("N Due Today / Start Review") is a
+  // browsing-screen affordance — it should disappear the moment you're
+  // actually doing something (a practice round, the queue itself, a
+  // score screen), not sit fixed above every stage the whole time.
+  document.getElementById('reviewBanner').style.display = isIdle ? '' : 'none';
   // The review queue spans every category, so the single-category
   // header (correct for every other stage, including review-launched
   // single-verse sessions — startReviewItem() sets state.cat to that
