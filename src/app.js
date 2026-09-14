@@ -343,7 +343,7 @@ function beginMatch() {
   matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
 
   renderMatch();
-  showStage('matchArea', state.cat + ' · match · ' + state.difficulty.name);
+  showStage('matchArea', state.cat + ' · ' + modeLabel(state.mode) + ' · ' + state.difficulty.name);
 }
 
 function renderMatch() {
@@ -396,14 +396,17 @@ function finishMatch() {
   const timeSec = Math.round((Date.now() - matchState.startTime) / 1000);
   const score = Math.round((matchState.total / (matchState.total + matchState.mistakes)) * 100);
   logAttempt(state.cat, 'match', state.difficulty.name, score, timeSec);
-  showScoreScreen(score, timeSec, [], `${matchState.total} pairs · ${matchState.mistakes} miss${matchState.mistakes === 1 ? '' : 'es'}`);
+  showScoreScreen(score, timeSec, [], [
+    { label: 'Pairs', value: matchState.total },
+    { label: 'Misses', value: matchState.mistakes }
+  ]);
 }
 
 function finishSession() {
   const timeSec = Math.round((Date.now() - state.startTime) / 1000);
   const avg = Math.round(state.results.reduce((s, r) => s + r.score, 0) / state.results.length);
   logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '—', avg, timeSec);
-  showScoreScreen(avg, timeSec, state.results, null);
+  showScoreScreen(avg, timeSec, state.results, [{ label: 'Verses', value: state.results.length }]);
 }
 
 function logAttempt(cat, mode, difficulty, score, timeSec) {
@@ -411,14 +414,14 @@ function logAttempt(cat, mode, difficulty, score, timeSec) {
   saveHistory();
 }
 
-function showScoreScreen(score, timeSec, results, extraLine) {
+function showScoreScreen(score, timeSec, results, extraStats) {
   document.getElementById('scoreBig').textContent = score + '%';
   const mins = Math.floor(timeSec / 60), secs = timeSec % 60;
   const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-  document.getElementById('scoreMeta').innerHTML = `
-    ${state.cat} · ${modeLabel(state.mode)}${state.difficulty ? ' · ' + state.difficulty.name : ''}<br>
-    Time: ${timeStr}${extraLine ? '<br>' + extraLine : ''}
-  `;
+  const stats = [{ label: 'Time', value: timeStr }, ...(extraStats || [])];
+  document.getElementById('scoreStats').innerHTML = stats.map(s => `
+    <div class="score-stat"><span>${s.value}</span><small>${s.label}</small></div>
+  `).join('');
   const reviewList = document.getElementById('reviewList');
   const reviewBtn = document.getElementById('reviewBtn');
   if (results && results.length) {
@@ -434,7 +437,8 @@ function showScoreScreen(score, timeSec, results, extraLine) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  showStage('scoreArea', 'Results');
+  const title = state.cat + ' · ' + modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  showStage('scoreArea', title);
 }
 function toggleReview() {
   const el = document.getElementById('reviewList');

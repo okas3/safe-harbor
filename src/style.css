@@ -196,7 +196,9 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 .score-sub {
   color: var(--ink-faint); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 1.5px;
 }
-.score-meta { margin: 18px 0; color: var(--ink-dim); font-size: 14px; line-height: 1.8; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+.score-stats { display: flex; justify-content: center; gap: 32px; margin: 22px 0 18px; }
+.score-stat span { display: block; font-size: 22px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+.score-stat small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
 .score-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .review-list { text-align: left; margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
 .review-item { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; }
