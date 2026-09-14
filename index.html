@@ -86,6 +86,7 @@
             <button class="btn" onclick="openReview()">Review</button>
             <button class="btn" onclick="openHistory()">View History</button>
           </div>
+          <div class="app-footer"><a onclick="openAbout()">About the method</a></div>
         </div>
       </div>
 
@@ -96,6 +97,30 @@
         </div>
         <div class="pill-row" id="historyTagRow" style="display:none; margin-bottom:14px;"></div>
         <div id="historyBody"></div>
+      </div>
+
+      <div id="view-about" class="view">
+        <div class="top-row">
+          <button class="btn" onclick="goHome()">← Home</button>
+          <span>About the Method</span>
+        </div>
+        <div class="about-content">
+          <p>Reading a verse over and over feels productive, but the research doesn't back it up — the thing that actually builds lasting memory is <strong>retrieval</strong>: closing your eyes and trying to produce it from nothing. That's called the testing effect, and it's why every mode here grades an actual attempt instead of just letting you re-read.</p>
+
+          <h3>From Recognition to Free Recall</h3>
+          <p>A brand-new verse starts as multiple choice — Dead Reckoning, Safe Harbor — where you're just learning to recognize it. As it sticks, the app moves you toward cued recall (Fathom by Fathom, Chain of Initials) and finally free recall (By Heart) — typing the whole thing from a bare reference, no help at all. Jumping straight to cold recall on something you've never studied is a recipe for frustration, not learning, so the app walks that ladder for you.</p>
+
+          <h3>Spaced Repetition</h3>
+          <p>Left alone, memory decays on a predictable curve — fast at first, then slower. The Review queue tracks roughly where each verse sits on that curve and resurfaces it right before it would slip, instead of leaving you to guess when to revisit something. Verses you know well come back less often; ones you're shaky on come back sooner.</p>
+
+          <h3>Weak Link</h3>
+          <p>Most memorization tools re-test a whole passage every time you miss one word. This one tracks exactly which words trip you up and lets you drill just those, still in the context of the verse, until they stop being a problem.</p>
+
+          <h3>Memory Hooks</h3>
+          <p>Pinning a mental picture or a short note to a verse takes advantage of dual coding — pairing verbal memory with a visual or spatial one measurably strengthens recall for most people. It's optional, but it's there when a verse needs a little extra grip.</p>
+
+          <p class="about-footnote">None of this replaces actually engaging with the text — it's just trying to get out of the way and let the practice do its job.</p>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/app.js"></script>

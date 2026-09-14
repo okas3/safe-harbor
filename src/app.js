@@ -884,6 +884,8 @@ function categoriesWithTag(tag) {
   return DATA.filter(g => g.verses.some(v => (v.tags || []).includes(tag))).map(g => g.cat);
 }
 
+function openAbout() { showView('view-about'); }
+
 function openHistory() {
   const tags = allTags();
   const tagRow = document.getElementById('historyTagRow');
@@ -911,7 +913,7 @@ function openHistory() {
 Object.assign(window, {
   openHistory, goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
-  checkWeakLink, checkChainBuild
+  checkWeakLink, checkChainBuild, openAbout
 });
 
 loadProgress().then(loadHistory);

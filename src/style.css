@@ -323,3 +323,18 @@ table.hist-table th:nth-last-child(-n+2), table.hist-table td:nth-last-child(-n+
 table.hist-table tr.hi-score-row td { color: var(--brass-bright); font-weight: 600; }
 table.hist-table tr.hi-score-row td:first-child { border-left: 2px solid var(--brass); padding-left: 6px; }
 .empty-hist { text-align: center; color: var(--ink-faint); padding: 30px 10px; font-size: 14px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
+
+.about-content { max-width: 62ch; margin: 0 auto; }
+.about-content p { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 0 18px; }
+.about-content h3 {
+  font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 12px; color: var(--brass);
+  text-transform: uppercase; letter-spacing: 1px; margin: 26px 0 8px; font-weight: 600;
+}
+.about-content .about-footnote { color: var(--ink-faint); font-style: italic; font-size: 13.5px; margin-top: 8px; }
+
+.app-footer { text-align: center; margin-top: 4px; }
+.app-footer a {
+  color: var(--ink-faint); font-size: 12px; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.app-footer a:hover { color: var(--ink-dim); }
