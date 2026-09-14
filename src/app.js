@@ -9,10 +9,10 @@ document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
 const HISTORY_KEY = 'scripture-history-v3';
 
 const MODES = [
+  { id: 'match', label: 'Safe Harbor', hint: 'Match the Pairs', desc: 'All references and verses laid out at once. Tap to pair them correctly, race the clock.' },
   { id: 'fade', label: 'Fathom by Fathom', hint: 'Fill in the Blanks', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
-  { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' },
-  { id: 'match', label: 'Safe Harbor', hint: 'Match the Pairs', desc: 'All references and verses laid out at once. Tap to pair them correctly, race the clock.' }
+  { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
 function diffsForMode(mode) {
   return mode === 'fade' ? FADE_DIFFS : mode === 'letters' ? LETTER_DIFFS : mode === 'match' ? MATCH_DIFFS : null;
