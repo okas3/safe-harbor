@@ -3,6 +3,7 @@ import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
 import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
+import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
 document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
@@ -15,6 +16,7 @@ const MODES = [
   { id: 'fade', label: 'Fathom by Fathom', hint: 'Fill in the Blanks', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
   { id: 'weaklink', label: 'Weak Link', hint: 'Drill Your Misses', desc: 'Only the specific words you keep getting wrong are blanked — everything else stays visible for context.' },
+  { id: 'chainbuild', label: 'Anchor Chain Build', hint: 'Build It Phrase by Phrase', desc: 'Add one phrase at a time, reciting everything built so far before the next link goes on.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
 const STAGE_LABELS = { new: 'New', recognized: 'Recognized', cued: 'Cued', free: 'Free Recall', mastered: 'Mastered', maintenance: 'Maintained' };
@@ -298,6 +300,9 @@ function beginSession(verses) {
   state.stepIndex = 0;
   state.results = [];
   state.startTime = Date.now();
+  state.chunks = undefined;
+  state.chunkIndex = undefined;
+  state.chunkVerseRef = undefined;
 
   if (state.mode === 'match') { beginMatch(); return; }
 
@@ -326,6 +331,7 @@ function showStep() {
   else if (state.mode === 'letters') renderLettersIntro(v);
   else if (state.mode === 'reverse') renderReverse(v);
   else if (state.mode === 'weaklink') renderWeakLink(v);
+  else if (state.mode === 'chainbuild') renderChainBuild(v);
   else renderType(v);
 }
 
@@ -496,6 +502,68 @@ function checkType() {
   btn.dataset.checked = '1';
   btn.innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
+
+function renderChainBuild(v) {
+  if (state.chunkVerseRef !== v.ref) {
+    state.chunks = chunkVerse(v.text);
+    state.chunkIndex = 0;
+    state.chunkVerseRef = v.ref;
+  }
+  const settled = state.chunks.slice(0, state.chunkIndex).join(' ');
+  const card = document.getElementById('flashcard');
+  card.innerHTML = `
+    <div class="theme-tag">${state.cat} · chain build · link ${state.chunkIndex + 1} of ${state.chunks.length}</div>
+    <div class="ref">${v.ref}</div>
+    ${settled ? `<div class="verse-text chain-settled">${settled}</div>` : ''}
+    <div class="tap-hint">${settled ? 'Type everything so far, including the new phrase:' : 'Type the first phrase:'}</div>
+    <textarea id="typeInput" placeholder="Type it..."></textarea>
+    <div id="typeResult"></div>
+  `;
+  document.getElementById('rateRow').style.display = 'flex';
+  document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkChainBuild()">Check</button>`;
+}
+function checkChainBuild() {
+  const btn = document.getElementById('rateRow');
+  if (btn.dataset.checked === '1') {
+    btn.dataset.checked = '';
+    state.chunkIndex++;
+    if (state.chunkIndex >= state.chunks.length) {
+      state.chunks = undefined; state.chunkIndex = undefined; state.chunkVerseRef = undefined;
+      state.stepIndex++;
+    }
+    showStep();
+    return;
+  }
+  const v = state.sessionVerses[state.stepIndex];
+  const targetText = state.chunks.slice(0, state.chunkIndex + 1).join(' ');
+  const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
+  const actual = targetText.split(' ');
+  let correctCount = 0;
+  const missed = [];
+  const diffHtml = actual.map((w, i) => {
+    const match = typed[i] && normWord(typed[i]) === normWord(w);
+    if (match) correctCount++;
+    else missed.push(normWord(w));
+    return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
+  }).join(' ');
+  const pct = Math.round((correctCount / actual.length) * 100);
+  document.getElementById('typeResult').innerHTML = `
+    <div class="score-line">${pct}% word match</div>
+    <div class="diff-line">${diffHtml}</div>
+  `;
+  const isLastLink = state.chunkIndex === state.chunks.length - 1;
+  if (isLastLink) {
+    // The final link is the whole verse, recalled cumulatively from a
+    // bare textarea — a real free-recall event, same standing as By
+    // Heart for spaced-repetition purposes.
+    state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct (full verse)` });
+    recordRecall(v.ref, pct, 'free');
+    recordWordMisses(v.ref, missed);
+  }
+  btn.dataset.checked = '1';
+  btn.innerHTML = `<button class="action-btn" onclick="checkChainBuild()">${isLastLink ? 'Next' : 'Next Link'}</button>`;
+}
+
 function nextStep() {
   const row = document.getElementById('rateRow');
   row.dataset.checked = '';
@@ -738,7 +806,7 @@ function openHistory() {
 Object.assign(window, {
   openHistory, goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
-  checkWeakLink
+  checkWeakLink, checkChainBuild
 });
 
 loadProgress().then(loadHistory);
