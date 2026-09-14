@@ -92,6 +92,29 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 }
 .verse-card-text { font-size: 15px; line-height: 1.6; color: var(--ink); }
 
+/* Dual-coding memory hooks: a mental-image note and/or a real image,
+   editable from the verse card, shown as a recall aid during
+   recall-mode practice. */
+.hook-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.hook-thumb { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+.hook-toggle-btn {
+  background: none; border: none; color: var(--brass); font-size: 12px; cursor: pointer;
+  font-family: 'Instrument Sans', -apple-system, sans-serif; padding: 0; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hook-editor { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.hook-editor textarea {
+  width: 100%; min-height: 50px; background: var(--bg-deep); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px;
+  font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 13px; resize: vertical;
+}
+.hook-editor input[type="file"] { font-size: 12px; color: var(--ink-dim); }
+.hook-status { font-size: 11.5px; color: var(--ink-faint); font-style: italic; }
+
+.hook-recall { margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.hook-thumb-lg { width: 100%; max-width: 220px; height: auto; border-radius: 6px; border: 1px solid var(--border); }
+.hook-note-text { font-size: 13px; color: var(--ink-dim); font-style: italic; text-align: center; }
+
 /* Mastery stage badge — reused on verse cards and the due-review list. */
 .stage-badge {
   font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600;

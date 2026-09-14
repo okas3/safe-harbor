@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, setMemoryHook } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -119,6 +119,8 @@ function renderHome() {
 
   document.getElementById('verseList').innerHTML = group.verses.map(v => {
     const stage = getProgress(v.ref).stage;
+    const hook = getProgress(v.ref).memoryHook;
+    const hasHook = hook.imageUrl || hook.note;
     return `
     <div class="verse-card">
       <div class="verse-card-top">
@@ -126,9 +128,31 @@ function renderHome() {
         <div class="stage-badge stage-${stage}">${STAGE_LABELS[stage]}</div>
       </div>
       <div class="verse-card-text">${v.text}</div>
+      <div class="hook-row">
+        ${hook.imageUrl ? `<img class="hook-thumb" src="${hook.imageUrl}" alt="Memory hook for ${v.ref}">` : ''}
+        <button class="hook-toggle-btn">${hasHook ? 'Edit Memory Hook' : '+ Add Memory Hook'}</button>
+      </div>
+      <div class="hook-editor" style="display:none;">
+        <textarea class="hook-note-input" placeholder="Describe a mental picture or keyword association…">${hook.note || ''}</textarea>
+        <input type="file" accept="image/*" class="hook-file-input">
+        <div class="hook-status"></div>
+      </div>
     </div>
   `;
   }).join('');
+
+  document.querySelectorAll('#verseList .verse-card').forEach((card, i) => {
+    const v = group.verses[i];
+    card.querySelector('.hook-toggle-btn').onclick = () => {
+      const editor = card.querySelector('.hook-editor');
+      editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
+    };
+    card.querySelector('.hook-note-input').onblur = (e) => {
+      const existing = getProgress(v.ref).memoryHook;
+      setMemoryHook(v.ref, { note: e.target.value, imageUrl: existing.imageUrl });
+    };
+    card.querySelector('.hook-file-input').onchange = (e) => uploadHookImage(v.ref, e.target, card);
+  });
 
   // Weak Link only makes sense once this category actually has tracked
   // misses to drill — disable the option entirely otherwise, rather
@@ -156,6 +180,32 @@ function renderHome() {
   });
 }
 
+async function uploadHookImage(ref, inputEl, card) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = card.querySelector('.hook-status');
+  statusEl.textContent = 'Uploading…';
+  try {
+    const res = await fetch('/api/upload-hook-image', {
+      method: 'POST',
+      headers: { 'content-type': file.type || 'application/octet-stream', 'x-filename': encodeURIComponent(file.name) },
+      body: file
+    });
+    if (!res.ok) throw new Error('upload failed');
+    const { url } = await res.json();
+    const existing = getProgress(ref).memoryHook;
+    setMemoryHook(ref, { note: existing.note, imageUrl: url });
+    statusEl.textContent = 'Saved.';
+    renderHome();
+  } catch (e) {
+    // Most likely cause: this is running under plain `npm run dev`
+    // (Vite doesn't serve /api routes) or Blob storage isn't linked
+    // to the Vercel project yet. Degrade to text-note-only rather
+    // than blocking the rest of the app on it.
+    statusEl.textContent = 'Image upload unavailable right now — your note still saves.';
+  }
+}
+
 function selectCategory(cat) {
   state.cat = cat;
   // Default the mode picker to whatever the category's weakest verse
@@ -173,7 +223,7 @@ function selectCategory(cat) {
   renderHome();
 }
 
-function startPractice() { beginSession(); }
+function startPractice() { state.isReviewSession = false; beginSession(); }
 
 // Retention-health strip: what's actually due, what's holding, what's
 // slipping — the "what should I do today" view, separate from the
@@ -223,6 +273,7 @@ function startReviewItem(item) {
   const diffs = diffsForMode(item.suggested.mode);
   state.difficulty = diffs ? (diffs.find(d => d.id === item.suggested.diffId) || diffs[0]) : null;
   beginSession([v]);
+  state.isReviewSession = true;
 }
 
 function showView(id) {
@@ -242,6 +293,11 @@ function showStage(name, title) {
   const isIdle = name === 'verseList';
   document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
   document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
+  // The review queue spans every category, so the single-category
+  // header (correct for every other stage, including review-launched
+  // single-verse sessions — startReviewItem() sets state.cat to that
+  // verse's real category) would be stale/misleading here specifically.
+  document.getElementById('catHeader').style.display = (name === 'reviewArea') ? 'none' : '';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
 
   // Live-counting timer, running only while a round is actually in
@@ -335,6 +391,21 @@ function showStep() {
   else renderType(v);
 }
 
+// Shown during recall modes only (never recognition modes — Dead
+// Reckoning and Safe Harbor test identifying/matching a reference, and
+// an imagery cue would trivialize that). Dual coding is meant to help
+// you *produce* the verse, not give away which option to pick.
+function hookSnippetHtml(ref) {
+  const hook = getProgress(ref).memoryHook;
+  if (!hook.imageUrl && !hook.note) return '';
+  return `
+    <div class="hook-recall">
+      ${hook.imageUrl ? `<img class="hook-thumb hook-thumb-lg" src="${hook.imageUrl}" alt="Memory hook">` : ''}
+      ${hook.note ? `<div class="hook-note-text">${hook.note}</div>` : ''}
+    </div>
+  `;
+}
+
 function renderFade(v) {
   const words = v.text.split(' ');
   const frac = state.difficulty.frac;
@@ -359,6 +430,7 @@ function renderFade(v) {
   card.innerHTML = `
     <div class="theme-tag">${state.cat} · fade</div>
     <div class="ref">${v.ref}</div>
+    ${hookSnippetHtml(v.ref)}
     <div class="verse-text">${spans}</div>
   `;
   document.getElementById('rateRow').style.display = 'flex';
@@ -413,6 +485,7 @@ function renderWeakLink(v) {
   card.innerHTML = `
     <div class="theme-tag">${state.cat} · weak link</div>
     <div class="ref">${v.ref}</div>
+    ${hookSnippetHtml(v.ref)}
     <div class="verse-text">${spans}</div>
   `;
   document.getElementById('rateRow').style.display = 'flex';
@@ -450,6 +523,7 @@ function renderLettersIntro(v) {
   card.innerHTML = `
     <div class="theme-tag">${state.cat} · first-letter cue</div>
     <div class="ref">${v.ref}</div>
+    ${hookSnippetHtml(v.ref)}
     <div class="letters-line">${initials}</div>
     <div class="tap-hint">Recite it from these cues, then type it below</div>
   `;
@@ -465,6 +539,7 @@ function renderTypeArea(v, afterLetters) {
     card.innerHTML = `
       <div class="theme-tag">${state.cat} · type from memory</div>
       <div class="ref">${v.ref}</div>
+      ${hookSnippetHtml(v.ref)}
       <textarea id="typeInput" placeholder="Type the verse from memory..."></textarea>
       <div id="typeResult"></div>
     `;
@@ -514,6 +589,7 @@ function renderChainBuild(v) {
   card.innerHTML = `
     <div class="theme-tag">${state.cat} · chain build · link ${state.chunkIndex + 1} of ${state.chunks.length}</div>
     <div class="ref">${v.ref}</div>
+    ${hookSnippetHtml(v.ref)}
     ${settled ? `<div class="verse-text chain-settled">${settled}</div>` : ''}
     <div class="tap-hint">${settled ? 'Type everything so far, including the new phrase:' : 'Type the first phrase:'}</div>
     <textarea id="typeInput" placeholder="Type it..."></textarea>
@@ -732,6 +808,7 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewList.style.display = 'none';
   }
   document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(5, { cat: state.cat, mode: modeLabel(state.mode) });
+  document.getElementById('nextDueBtn').style.display = state.isReviewSession ? 'block' : 'none';
   const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
   showStage('scoreArea', title);
 }
