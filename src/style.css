@@ -86,22 +86,33 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 }
 .verse-card-text { font-size: 15px; line-height: 1.6; color: var(--ink); }
 
-.setup-section { margin-bottom: 14px; }
 .setup-label {
   font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1px;
   margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
 }
+
+/* Start Quiz + Game Mode select share one row, à la Ekvis's
+   "Start Quiz | Game mode [dropdown]" bar. */
+.quiz-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.quiz-bar .start-btn { flex: 0 0 auto; width: auto; padding: 13px 20px; white-space: nowrap; }
+.quiz-bar-label { font-size: 13px; color: var(--ink-dim); white-space: nowrap; }
 .mode-select {
-  width: 100%; background: var(--bg-deep); color: var(--ink); border: 1px solid var(--border);
+  flex: 1; min-width: 0; background: var(--bg-deep); color: var(--ink); border: 1px solid var(--border);
   border-radius: 5px; padding: 11px 12px; font-family: 'Instrument Sans', -apple-system, sans-serif;
   font-size: 15px; cursor: pointer; appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e97a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
-  padding-right: 36px;
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px;
+  padding-right: 32px;
 }
 .mode-select:focus { outline: none; border-color: var(--brass-dim); }
-.mode-desc { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 8px; }
-.start-btn { margin-bottom: 26px; }
+.mode-desc { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-bottom: 26px; }
+
+@media (max-width: 420px) {
+  .quiz-bar { flex-wrap: wrap; }
+  .quiz-bar .start-btn { flex: 1 1 100%; }
+  .quiz-bar-label { display: none; }
+  .mode-select { flex: 1 1 100%; }
+}
 
 .cat-switcher { padding-top: 18px; border-top: 1px solid var(--border); margin-bottom: 20px; }
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
