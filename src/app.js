@@ -240,7 +240,12 @@ function updateSuggestedBadge() {
   const sug = suggestionForCategory(state.cat);
   const isSuggested = state.mode === sug.mode && (state.difficulty ? state.difficulty.id : null) === sug.diffId;
   const tag = document.getElementById('suggestedTag');
-  if (tag) tag.style.display = isSuggested ? 'block' : 'none';
+  // visibility, not display -- hiding it with display:none removes
+  // its space entirely, so Start Quiz/Mode/everything below it would
+  // shift position depending on whether the current selection happens
+  // to match the suggestion. Same reflow problem as the verse list,
+  // just here it's triggered by picking a mode instead of a category.
+  if (tag) tag.style.visibility = isSuggested ? 'visible' : 'hidden';
 }
 
 function startPractice() { state.isReviewSession = false; state.stepConfigs = undefined; beginSession(); }
