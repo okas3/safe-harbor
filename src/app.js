@@ -63,7 +63,12 @@ async function loadHistory() {
     try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
     catch (e2) { history = []; }
   }
-  renderHome();
+  // Apply the real suggestion for the default category now that
+  // progress data is loaded — the initial `state` literal's mode is
+  // just a bootstrap placeholder, not an actual recommendation, so
+  // the suggested-mode badge would otherwise be wrong until the user
+  // clicked a category pill at least once.
+  selectCategory(state.cat);
 }
 async function saveHistory() {
   try {
@@ -106,6 +111,7 @@ function onModeSelectChange() {
   const diffs = diffsForMode(modeId);
   state.difficulty = diffs ? diffs.find(d => d.id === diffId) : null;
   document.getElementById('modeDescText').textContent = MODES.find(m => m.id === modeId).desc;
+  updateSuggestedBadge();
 }
 
 function renderHome() {
@@ -148,6 +154,7 @@ function renderHome() {
 
   document.getElementById('modeSelect').value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
   document.getElementById('modeDescText').textContent = MODES.find(m => m.id === state.mode).desc;
+  updateSuggestedBadge();
 
   const catPills = document.getElementById('catPills');
   catPills.innerHTML = '';
@@ -165,21 +172,41 @@ function renderHome() {
   });
 }
 
-function selectCategory(cat) {
-  state.cat = cat;
-  // Default the mode picker to whatever the category's weakest verse
-  // needs next — a real default, not a lock, so it never overrides a
-  // choice the user is about to make after this.
+// The category's weakest verse decides what it actually needs next —
+// shared by selectCategory() (to set the real default) and
+// updateSuggestedBadge() (to tell whether the *current* selection,
+// possibly since changed by hand, still matches that suggestion).
+function suggestionForCategory(cat) {
   const group = DATA.find(g => g.cat === cat);
   const weakest = group.verses.reduce((worst, v) => {
     const s = getProgress(v.ref).stage;
     return STAGE_RANK[s] < STAGE_RANK[worst] ? s : worst;
   }, 'maintenance');
-  const sug = suggestedModeForStage(weakest);
+  return suggestedModeForStage(weakest);
+}
+
+function selectCategory(cat) {
+  state.cat = cat;
+  // Default the mode picker to whatever the category's weakest verse
+  // needs next — a real default, not a lock, so it never overrides a
+  // choice the user is about to make after this.
+  const sug = suggestionForCategory(cat);
   state.mode = sug.mode;
   const diffs = diffsForMode(sug.mode);
   state.difficulty = diffs ? (diffs.find(d => d.id === sug.diffId) || diffs[0]) : null;
   renderHome();
+}
+
+// The suggestion engine already existed (suggestedModeForStage) but
+// was invisible — the dropdown just silently pre-filled it with no
+// indication a recommendation was even happening. This makes it
+// visible without changing the flow: Start Quiz already runs whatever
+// is selected, so no extra click is added either way.
+function updateSuggestedBadge() {
+  const sug = suggestionForCategory(state.cat);
+  const isSuggested = state.mode === sug.mode && (state.difficulty ? state.difficulty.id : null) === sug.diffId;
+  const tag = document.getElementById('suggestedTag');
+  if (tag) tag.style.display = isSuggested ? 'block' : 'none';
 }
 
 function startPractice() { state.isReviewSession = false; state.stepConfigs = undefined; beginSession(); }

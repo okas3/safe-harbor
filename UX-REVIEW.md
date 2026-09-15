@@ -140,6 +140,18 @@ Status of the above, updated as work lands:
       words" button (`drillNow()`) that jumps straight into Weak Link
       scoped to just that verse, since the failure just populated
       `wordMisses` for it.
-- [ ] 3. Suggested-mode-as-primary-action on the home screen
+- [x] 3. Suggested-mode visibility on the home screen — a small
+      "Suggested next step for this category" label now appears above
+      the quiz bar whenever the current mode+difficulty selection
+      matches `suggestedModeForStage()`'s recommendation, and hides the
+      moment the user manually picks something else. No flow change —
+      Start Quiz already ran the suggestion by default, this just says
+      so. Fixed an adjacent bug while at it: the app's initial `state`
+      literal defaulted to a hardcoded `match` mode that was never
+      actually run through the suggestion engine, so the badge (and the
+      pre-filled mode itself) was wrong on first load until a category
+      was clicked at least once. `loadHistory()` now calls
+      `selectCategory(state.cat)` once progress data is in, so the
+      default category's actual suggestion applies from the start.
 - [ ] 4. Streak tracking + Review promoted to primary CTA when due
 - [ ] 5. Dual-coding v2 — not started, pending explicit request

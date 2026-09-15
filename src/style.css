@@ -136,6 +136,13 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 
 /* Start Quiz + Game Mode select share one row, à la Ekvis's
    "Start Quiz | Game mode [dropdown]" bar. */
+/* The suggestion engine (suggestedModeForStage) already picks what's
+   pre-filled below — this just says so, so Start Quiz doesn't look
+   like it's running an arbitrary default. */
+.suggested-tag {
+  font-size: 11px; color: var(--brass); text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 8px; font-family: 'JetBrains Mono', monospace;
+}
 .quiz-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .quiz-bar .start-btn { flex: 0 0 auto; width: auto; padding: 13px 20px; white-space: nowrap; }
 .quiz-bar-label { font-size: 13px; color: var(--ink-dim); white-space: nowrap; }
