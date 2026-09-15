@@ -335,6 +335,33 @@ function normWord(w) {
   return (w || '').toLowerCase().replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
 }
 
+// Aligns typed words against the actual words via longest-common-
+// subsequence, rather than comparing by raw position — a single
+// dropped or extra word used to misalign every word after it, marking
+// an otherwise-correct recall as wrong from that point on. Returns a
+// boolean per actual word: true if it was found in the typed input in
+// the correct relative order (still order-sensitive — the right words
+// in the wrong order don't both get credit).
+function alignWords(actualWords, typedWords) {
+  const a = actualWords.map(normWord);
+  const t = typedWords.map(normWord);
+  const n = a.length, m = t.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === t[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const matched = new Array(n).fill(false);
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === t[j]) { matched[i] = true; i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+    else j++;
+  }
+  return matched;
+}
+
 function beginSession(verses) {
   state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty, verses };
   const group = DATA.find(g => g.cat === state.cat);
@@ -540,13 +567,13 @@ function checkType() {
   const v = state.sessionVerses[state.stepIndex];
   const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
   const actual = v.text.split(' ');
+  const matched = alignWords(actual, typed);
   let correctCount = 0;
   const missed = [];
   const diffHtml = actual.map((w, i) => {
-    const match = typed[i] && normWord(typed[i]) === normWord(w);
-    if (match) correctCount++;
-    else missed.push(normWord(w));
-    return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
+    if (matched[i]) { correctCount++; return `<span class="ok">${w}</span>`; }
+    missed.push(normWord(w));
+    return `<span class="miss">${w}</span>`;
   }).join(' ');
   const pct = Math.round((correctCount / actual.length) * 100);
   document.getElementById('typeResult').innerHTML = `
@@ -597,13 +624,13 @@ function checkChainBuild() {
   const targetText = state.chunks.slice(0, state.chunkIndex + 1).join(' ');
   const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
   const actual = targetText.split(' ');
+  const matched = alignWords(actual, typed);
   let correctCount = 0;
   const missed = [];
   const diffHtml = actual.map((w, i) => {
-    const match = typed[i] && normWord(typed[i]) === normWord(w);
-    if (match) correctCount++;
-    else missed.push(normWord(w));
-    return `<span class="${match ? 'ok' : 'miss'}">${w}</span>`;
+    if (matched[i]) { correctCount++; return `<span class="ok">${w}</span>`; }
+    missed.push(normWord(w));
+    return `<span class="miss">${w}</span>`;
   }).join(' ');
   const pct = Math.round((correctCount / actual.length) * 100);
   document.getElementById('typeResult').innerHTML = `
