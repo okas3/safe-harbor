@@ -5,8 +5,7 @@ import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
 import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getNewVerses, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
-document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
-document.getElementById('h1IconRight').innerHTML = ANCHOR_ICON;
+document.getElementById('h1Mark').innerHTML = ANCHOR_ICON;
 
 const HISTORY_KEY = 'scripture-history-v3';
 
