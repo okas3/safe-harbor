@@ -253,7 +253,7 @@ function openReview() {
   `;
   document.getElementById('reviewStartRow').innerHTML = due.length
     ? `<button class="btn primary wide" onclick="beginReviewSession()">Start Review (${due.length})</button>`
-    : `<div class="empty-hist">Nothing due for reinforcement.${newCount ? ` ${newCount} new verse${newCount === 1 ? '' : 's'} waiting — practice a category to start them.` : ''}</div>`;
+    : `<div class="empty-hist">Nothing due for reinforcement.${newCount ? ` ${newCount} new verse${newCount === 1 ? '' : 's'} waiting. Practice a category to start them.` : ''}</div>`;
   // At Risk verses (badly overdue) are the only ones worth calling out
   // individually — everything else in the queue is covered by the
   // single Start Review flow above, not a row-per-verse list.
@@ -1036,7 +1036,7 @@ function renderIconGrid() {
         <div class="icon-chip-glyph">${CATEGORY_ICONS[g.cat] || ''}</div>
         <div class="icon-chip-text">
           <span class="icon-chip-name">${info.icon}</span>
-          <span class="icon-chip-cat">${g.cat}${info.meaning ? ' — ' + info.meaning : ''}</span>
+          <span class="icon-chip-cat">${g.cat}${info.meaning ? ': ' + info.meaning : ''}</span>
         </div>
       </div>
     `;
