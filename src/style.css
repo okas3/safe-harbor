@@ -335,7 +335,19 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
    icon symbolism is a design note, not pedagogy, and reads that way:
    set off by a divider, smaller and dimmer than the sections above. */
 .about-aside { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 18px; }
-.about-aside p { font-size: 13px; line-height: 1.65; color: var(--ink-faint); margin: 0; }
+.about-aside p { font-size: 13px; line-height: 1.65; color: var(--ink-faint); margin: 0 0 10px; }
+.about-aside p:last-child { margin-bottom: 0; }
+.icon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+@media (max-width: 480px) { .icon-grid { grid-template-columns: 1fr; } }
+.icon-chip {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-deep); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+}
+.icon-chip-glyph { width: 22px; height: 22px; flex-shrink: 0; color: var(--brass); }
+.icon-chip-glyph svg { width: 100%; height: 100%; display: block; }
+.icon-chip-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.icon-chip-name { font-size: 12px; font-weight: 600; color: var(--ink-dim); }
+.icon-chip-cat { font-size: 11.5px; color: var(--ink-faint); line-height: 1.4; }
 
 .app-footer { text-align: center; margin-top: 4px; }
 .app-footer a {

@@ -1012,7 +1012,38 @@ function leaderboardMarkup(limit, cat, mode, difficulty) {
   }).join('');
 }
 
-function openAbout() { showView('view-about'); }
+// Pairs each category with the plain name of its icon (see icons.js
+// for the shapes themselves) and the bit of symbolism behind it, for
+// the About page's icon grid. Kept here rather than in icons.js since
+// it's prose for a reader, not part of the icon-drawing logic.
+const ICON_MEANINGS = {
+  "Who God Is": { icon: 'Compass', meaning: "a fixed reference point, unmoved by whatever's happening around it" },
+  "Our Unrighteousness": { icon: 'Storm cloud', meaning: 'the weight and fallout of sin' },
+  "God's Mercy": { icon: 'Lighthouse', meaning: 'the light held out to something wrecked' },
+  "God's Power": { icon: 'Lightning', meaning: '' },
+  "Power of Prayer": { icon: "Ship's wheel", meaning: 'hands actually on the helm' },
+  "Power of Faith": { icon: 'Sail', meaning: 'substance made visible only by what it moves' },
+  "Renewal of the Mind": { icon: 'Sunrise', meaning: '' }
+};
+
+function renderIconGrid() {
+  const grid = document.getElementById('iconGrid');
+  if (!grid) return;
+  grid.innerHTML = DATA.map(g => {
+    const info = ICON_MEANINGS[g.cat] || { icon: '', meaning: '' };
+    return `
+      <div class="icon-chip">
+        <div class="icon-chip-glyph">${CATEGORY_ICONS[g.cat] || ''}</div>
+        <div class="icon-chip-text">
+          <span class="icon-chip-name">${info.icon}</span>
+          <span class="icon-chip-cat">${g.cat}${info.meaning ? ' — ' + info.meaning : ''}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAbout() { renderIconGrid(); showView('view-about'); }
 
 // The markup uses inline onclick="" handlers (kept as-is from the
 // original single-file version — rewiring to addEventListener isn't
