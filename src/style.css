@@ -100,15 +100,26 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .verse-list::-webkit-scrollbar { width: 6px; }
 .verse-list::-webkit-scrollbar-track { background: transparent; }
 .verse-list::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 3px; }
-/* Fade hint at the bottom edge -- a card cut off mid-sentence with no
-   cue reads as broken, not as "scroll for more." Sits on the wrapper,
-   not inside the scrolling box, so it stays pinned to the visible
-   edge instead of scrolling away with the content. */
-.verse-list-wrap::after {
-  content: ''; position: absolute; left: 0; right: 6px; bottom: 0; height: 32px;
-  background: linear-gradient(to bottom, transparent, var(--bg));
-  pointer-events: none;
+/* Fade hints at each edge -- a card cut off mid-sentence with no cue
+   reads as broken, not as "scroll for more." Sit on the wrapper, not
+   inside the scrolling box, so they stay pinned to the visible edges
+   instead of scrolling away with the content. Each one only shows
+   when there's actually more to see in that direction (toggled by
+   updateVerseListFades() in app.js) -- a top fade with nothing above
+   it, or a bottom fade after you've scrolled all the way down, would
+   both misrepresent the box's actual state. */
+.verse-list-wrap::before, .verse-list-wrap::after {
+  content: ''; position: absolute; left: 0; right: 6px; height: 32px;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
 }
+.verse-list-wrap::before {
+  top: 0; background: linear-gradient(to top, transparent, var(--bg));
+}
+.verse-list-wrap::after {
+  bottom: 0; background: linear-gradient(to bottom, transparent, var(--bg));
+}
+.verse-list-wrap.show-top-fade::before { opacity: 1; }
+.verse-list-wrap.show-bottom-fade::after { opacity: 1; }
 .verse-card {
   background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
   border-radius: 4px; padding: 14px 16px;

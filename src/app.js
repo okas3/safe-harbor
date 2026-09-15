@@ -40,6 +40,21 @@ let matchState = null;
 buildModeOptions();
 document.getElementById('modeSelect').addEventListener('change', onModeSelectChange);
 
+// The verse list's top/bottom fades should reflect actual scroll
+// position, not just "there might be more" — a top fade with nothing
+// above it, or a bottom fade still showing once you've scrolled all
+// the way down, both misrepresent the state of the box. #verseList
+// itself persists across renders (only its innerHTML is replaced), so
+// this listener is attached once, not re-added per render.
+function updateVerseListFades() {
+  const el = document.getElementById('verseList');
+  const wrap = document.querySelector('.verse-list-wrap');
+  if (!el || !wrap) return;
+  wrap.classList.toggle('show-top-fade', el.scrollTop > 4);
+  wrap.classList.toggle('show-bottom-fade', el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+}
+document.getElementById('verseList').addEventListener('scroll', updateVerseListFades);
+
 let history = [];
 let db = null;
 
@@ -186,6 +201,10 @@ function renderHome() {
   const streakEl = document.getElementById('streakText');
   streakEl.style.display = streak > 0 ? 'inline' : 'none';
   streakEl.textContent = streak > 0 ? `${streak}-day streak` : '';
+
+  // Content height just changed (new category, different verse
+  // lengths) — recompute the fades even though no scroll happened.
+  updateVerseListFades();
 }
 
 // The category's weakest verse decides what it actually needs next —
