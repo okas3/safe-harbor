@@ -153,5 +153,20 @@ Status of the above, updated as work lands:
       was clicked at least once. `loadHistory()` now calls
       `selectCategory(state.cat)` once progress data is in, so the
       default category's actual suggestion applies from the start.
-- [ ] 4. Streak tracking + Review promoted to primary CTA when due
+- [x] 4. Streak tracking + Review promoted to primary CTA when due —
+      `progress.js` now tracks a daily streak (`recordActivity()`,
+      `getStreak()`), incremented once per calendar day a session
+      completes, reset if a day is skipped. The home screen's Review
+      button becomes primary-styled and shows the due count
+      ("Review (N Due)") once there's at least one due verse — but only
+      after `history.length > 0`, i.e. after at least one real session.
+      Every verse is technically "due" before that (correct SRS
+      semantics for never-practiced cards), and promoting Review before
+      any engagement would just reproduce the "meaningless 28 Due
+      Today" noise the app already deliberately avoids elsewhere
+      (`openReview()`'s own reasoning comment). Fixed an adjacent bug
+      while wiring this up: `cancelSession()` (the "Back to Verses"
+      button) never called `renderHome()`, so the due count and streak
+      only ever refreshed on a category switch, not right after
+      finishing a session.
 - [ ] 5. Dual-coding v2 — not started, pending explicit request

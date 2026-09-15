@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, PASS_THRESHOLD } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -170,6 +170,22 @@ function renderHome() {
     div.onclick = () => selectCategory(g.cat);
     catPills.appendChild(div);
   });
+
+  // Every never-practiced verse counts as "due" in SRS terms (that's
+  // correct — new cards are always due), but showing that as an urgent
+  // nudge before a single session has happened is just noise, not
+  // signal (same reasoning openReview()'s stats already apply). Only
+  // promote Review once there's real engagement history to make the
+  // due count meaningful.
+  const reviewBtn = document.getElementById('reviewHomeBtn');
+  const due = history.length ? getDueVerses(DATA).length : 0;
+  reviewBtn.classList.toggle('primary', due > 0);
+  reviewBtn.textContent = due > 0 ? `Review (${due} Due)` : 'Review';
+
+  const streak = getStreak();
+  const streakEl = document.getElementById('streakText');
+  streakEl.style.display = streak > 0 ? 'inline' : 'none';
+  streakEl.textContent = streak > 0 ? `${streak}-day streak` : '';
 }
 
 // The category's weakest verse decides what it actually needs next —
@@ -351,6 +367,10 @@ function stopTimer() {
 function cancelSession() {
   matchState = null;
   state.stepConfigs = undefined;
+  // Returning to the idle home state should reflect whatever just
+  // happened in the session (due count, streak) — otherwise Review's
+  // promotion and the streak text only refresh on a category switch.
+  renderHome();
   showStage('verseList');
 }
 
@@ -876,6 +896,7 @@ function finishMatch() {
   // along the way.
   matchState.pairSource.forEach(p => recordRecognition(p.ref));
   logAttempt(state.cat, 'match', state.difficulty.name, score, timeSec);
+  recordActivity();
   showScoreScreen(score, timeSec, [], [
     { label: 'Pairs', value: matchState.total },
     { label: 'Misses', value: matchState.mistakes }
@@ -889,6 +910,7 @@ function finishSession() {
   // doesn't fit the per-cat/mode leaderboard schema — only log
   // straight single-mode practice sessions.
   if (!state.stepConfigs) logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '', avg, timeSec);
+  recordActivity();
   showScoreScreen(avg, timeSec, state.results, [{ label: 'Verses', value: state.results.length }]);
   state.stepConfigs = undefined;
 }
@@ -998,4 +1020,4 @@ Object.assign(window, {
   checkWeakLink, checkChainBuild, openAbout, beginReviewSession
 });
 
-loadProgress().then(loadHistory);
+Promise.all([loadProgress(), loadStreak()]).then(loadHistory);

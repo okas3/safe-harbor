@@ -73,7 +73,8 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.wide { width: 100%; padding: 13px; }
 
-.home-actions { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
+.home-actions { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 18px; }
+.streak-text { color: var(--brass); font-size: 13px; font-family: 'JetBrains Mono', monospace; }
 
 /* Home screen: category header, verse previews, mode/difficulty
    select, Start button, category switcher — all one page. */

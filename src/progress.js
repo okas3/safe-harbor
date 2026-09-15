@@ -156,6 +156,64 @@ export function suggestedModeForStage(stage) {
   }
 }
 
+const STREAK_KEY = 'scripture-streak-v1';
+let streak = { current: 0, lastDate: null };
+let streakDb = null;
+
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export async function loadStreak() {
+  try {
+    streakDb = (typeof window !== 'undefined' && window.claude?.use) ? await window.claude.use('db') : null;
+    if (streakDb) {
+      const snap = await streakDb.doc('streak/log').get();
+      streak = snap.exists ? snap.data() : { current: 0, lastDate: null };
+    } else {
+      streak = JSON.parse(localStorage.getItem(STREAK_KEY) || 'null') || { current: 0, lastDate: null };
+    }
+  } catch (e) {
+    try { streak = JSON.parse(localStorage.getItem(STREAK_KEY) || 'null') || { current: 0, lastDate: null }; }
+    catch (e2) { streak = { current: 0, lastDate: null }; }
+  }
+  return streak;
+}
+
+async function saveStreak() {
+  try {
+    if (streakDb) await streakDb.doc('streak/log').set(streak);
+    else localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+  } catch (e) {}
+}
+
+// Called once per completed practice session (any mode). A day only
+// extends the streak if the previous counted day was exactly
+// yesterday — a gap of two or more days resets it to 1, and a second
+// session on the same day is a no-op rather than double-counting.
+export function recordActivity() {
+  const todayKey = localDateKey(new Date());
+  if (streak.lastDate === todayKey) return streak;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  streak.current = streak.lastDate === localDateKey(yesterday) ? streak.current + 1 : 1;
+  streak.lastDate = todayKey;
+  saveStreak();
+  return streak;
+}
+
+// A streak display shouldn't keep showing "3 days" forever once
+// you've actually missed a day — it only counts if the last logged
+// activity was today or yesterday (still extendable today).
+export function getStreak() {
+  if (!streak.lastDate) return 0;
+  const todayKey = localDateKey(new Date());
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (streak.lastDate !== todayKey && streak.lastDate !== localDateKey(yesterday)) return 0;
+  return streak.current;
+}
+
 // Flattens every verse across every category, returns the ones due for
 // review (dueDate in the past, or never scheduled at all), most
 // overdue first, each carrying its suggested next mode.
