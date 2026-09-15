@@ -52,10 +52,14 @@ Outputs a static site to `dist/`.
 - `MEMORY-SYSTEM-REVIEW.md` — the design rationale for the
   spaced-repetition/mastery layer, written up as an expert-mnemonist
   critique with a prioritized roadmap
+- `UX-REVIEW.md` — a follow-on UI/UX critique (home screen, mode
+  selection, the mastery gate's visibility, grading correctness) and
+  an implementation log of what's landed since
 
-## History & progress storage
+## Score history & progress storage
 
-Both the attempt history and the spaced-repetition progress data save
-to `localStorage` in a normal browser. If this page is ever published
-as a Claude Artifact with the `db` capability declared, it uses that
-instead so data persists across devices.
+Both the per-attempt score log (powers the score screen's leaderboard
+and category best-score badges) and the spaced-repetition progress
+data save to `localStorage` in a normal browser. If this page is ever
+published as a Claude Artifact with the `db` capability declared, it
+uses that instead so data persists across devices.

@@ -91,14 +91,36 @@ drilling, a staple memory-athlete technique).
 Status of the above, updated as work lands:
 
 - [x] 1. Spaced-repetition scheduler — `src/progress.js`, simplified SM-2
-- [x] 2. Due-Today review queue — home screen banner + cross-category queue
-- [x] 3. Mastery-gated progression — new/recognized/cued/free/mastered/maintenance stages, suggested-mode defaults
+- [x] 2. Due-Today review queue — home screen queue, later split into
+      genuinely-due (real `dueDate` in the past) vs. New (never
+      scheduled) after the combined count/queue proved misleading —
+      see `UX-REVIEW.md`'s addendum
+- [x] 3. Mastery-gated progression — new/recognized/cued/free/mastered/maintenance stages, suggested-mode defaults; later tightened so
+      mastered/maintenance require a proven *free*-recall pass, not
+      just enough cued-mode reps (see `UX-REVIEW.md`)
 - [x] 4. Weak-word re-drill — Weak Link mode
-- [x] 5. Dual-coding/imagery hooks — per-verse text note + image (Vercel Blob), shown during recall modes
-- [x] 6. Phrase-level chunked building — Anchor Chain Build mode
-- [x] 7. Retention-health stats (leaderboard reframe) — Due Today/Mastered/At Risk banner; per-category High Score kept as-is
-- [x] 8. Thematic/tag-based linking — data model (`tags: []` on every verse) + History filter chips, no tag values populated yet
+- [ ] 5. Dual-coding/imagery hooks — shipped as a per-verse text
+      note + image (Vercel Blob), then **removed entirely** in a later
+      session: the image upload depended on a manually-linked Blob
+      store that silently degraded, and the always-visible hook UI
+      added permanent chrome to every verse card whether used or not.
+      Revisit only with an explicit ask — see `UX-REVIEW.md` section 4
+      for what a v2 should do differently (no image-upload dependency,
+      attach the prompt to a moment instead of permanent chrome).
+- [x] 6. Phrase-level chunked building — Anchor Chain Build mode; the
+      first link originally gave zero cue for the phrase's content or
+      even its word count, later fixed by cueing it with first-letter
+      initials (same technique Chain of Initials already used)
+- [x] 7. Retention-health stats (leaderboard reframe) — Due
+      Today/New/Mastered/At Risk tiles; per-category-and-difficulty
+      High Score leaderboard (no longer a raw History log — that page
+      was cut entirely, see `UX-REVIEW.md`)
+- [ ] 8. Thematic/tag-based linking — the `tags: []` scaffolding and
+      its History filter-chip UI were removed along with History
+      itself (the filter could structurally never fire — no tag
+      values were ever populated). Would need to be redesigned from
+      scratch if this is still wanted.
 
-All 8 items shipped. Two review-flow bugs found in testing and fixed:
-stale category header while browsing the cross-category due list, and
-no "next due verse" path after finishing a review-launched session.
+Most of the above shipped and then evolved further in later sessions —
+see `UX-REVIEW.md` for the follow-on critique and fixes (grading bugs,
+per-verse pass/fail, the New/Due split, streak tracking, and more).
