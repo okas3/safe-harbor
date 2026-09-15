@@ -575,7 +575,11 @@ function checkType() {
     missed.push(normWord(w));
     return `<span class="miss">${w}</span>`;
   }).join(' ');
-  const pct = Math.round((correctCount / actual.length) * 100);
+  // Denominator counts extra typed words too, not just the actual
+  // verse's word count — otherwise an inserted word that doesn't
+  // displace any real word goes completely unpenalized, since every
+  // actual word can still be found in order in the LCS alignment.
+  const pct = Math.round((correctCount / Math.max(actual.length, typed.length)) * 100);
   document.getElementById('typeResult').innerHTML = `
     <div class="score-line">${pct}% word match</div>
     <div class="diff-line">${diffHtml}</div>
@@ -632,7 +636,11 @@ function checkChainBuild() {
     missed.push(normWord(w));
     return `<span class="miss">${w}</span>`;
   }).join(' ');
-  const pct = Math.round((correctCount / actual.length) * 100);
+  // Denominator counts extra typed words too, not just the actual
+  // verse's word count — otherwise an inserted word that doesn't
+  // displace any real word goes completely unpenalized, since every
+  // actual word can still be found in order in the LCS alignment.
+  const pct = Math.round((correctCount / Math.max(actual.length, typed.length)) * 100);
   document.getElementById('typeResult').innerHTML = `
     <div class="score-line">${pct}% word match</div>
     <div class="diff-line">${diffHtml}</div>

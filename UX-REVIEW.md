@@ -127,10 +127,10 @@ Status of the above, updated as work lands:
 - [x] 1. Positional grading fix — By Heart, Anchor Chain Build now grade
       via LCS word-alignment (`alignWords()` in `app.js`) instead of raw
       index comparison. Verified: a dropped word no longer cascades into
-      marking everything after it wrong. Side effect worth knowing: an
-      *inserted* extra word is no longer penalized either (every actual
-      word can still be found in order) — a deliberate tradeoff, not a
-      bug, but flagged in case exact word-count matters more than this.
+      marking everything after it wrong, a genuine substitution is still
+      caught, and an inserted extra word is now correctly penalized too
+      (denominator counts `max(actual.length, typed.length)`, not just
+      the verse's own word count).
 - [ ] 2. Per-verse pass/fail annotation on the score screen's review list
 - [ ] 3. Suggested-mode-as-primary-action on the home screen
 - [ ] 4. Streak tracking + Review promoted to primary CTA when due
