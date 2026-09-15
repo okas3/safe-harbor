@@ -44,8 +44,12 @@ h1 {
   text-transform: uppercase;
 }
 h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.h1-icon { width: 17px; height: 17px; color: var(--brass-dim); flex-shrink: 0; }
-.h1-icon svg { width: 100%; height: 100%; display: block; }
+.h1-icon { width: 19px; height: 19px; color: var(--brass-dim); flex-shrink: 0; }
+/* A bolder stroke than the small list icons -- this one flanks the
+   page title as a hero mark, not a list-item glyph, and the thin
+   uniform line + fully rounded joins read as soft/childish at that
+   size and prominence. */
+.h1-icon svg { width: 100%; height: 100%; display: block; stroke-width: 2.1; }
 .subtitle {
   text-align: center; color: var(--ink-dim); font-size: 14px; margin-bottom: 26px;
   font-style: italic; font-family: 'Instrument Sans', -apple-system, sans-serif;

@@ -67,10 +67,10 @@ export const CATEGORY_ICONS = {
 // ⚓ emoji, so it renders identically everywhere and matches the
 // brass stroke weight of the category icons.
 export const ANCHOR_ICON = svg(`
-  <circle cx="12" cy="4.5" r="2.2"/>
-  <line x1="12" y1="6.7" x2="12" y2="19.5"/>
-  <line x1="8.5" y1="10" x2="15.5" y2="10"/>
+  <circle cx="12" cy="4.5" r="2"/>
+  <line x1="12" y1="6.5" x2="12" y2="19"/>
+  <line x1="8" y1="9.5" x2="16" y2="9.5"/>
   <path d="M5 13a7 7 0 0 0 14 0"/>
-  <line x1="5" y1="13" x2="5" y2="10.5"/>
-  <line x1="19" y1="13" x2="19" y2="10.5"/>
+  <line x1="5" y1="13" x2="3" y2="15.3"/>
+  <line x1="19" y1="13" x2="21" y2="15.3"/>
 `);
