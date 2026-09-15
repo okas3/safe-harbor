@@ -214,27 +214,49 @@ export function getStreak() {
   return streak.current;
 }
 
-// Flattens every verse across every category, returns the ones due for
-// review (dueDate in the past, or never scheduled at all), most
-// overdue first, each carrying its suggested next mode.
+// Flattens every verse across every category, returns the ones
+// genuinely due for reinforcement — an actual dueDate in the past,
+// meaning it's been through recall-based practice before and is now
+// fading. Most overdue first, each carrying its suggested next mode.
+//
+// Deliberately excludes never-scheduled verses (no dueDate at all) —
+// those aren't "due," they're just unstarted. Lumping them in used to
+// mean a never-touched verse could out-rank a genuinely-decaying one
+// in the queue (the old sort's `?? 9999` fallback made "never
+// scheduled" look like the single most overdue thing on record) and
+// flooded Review with first-exposure verses instead of reinforcement.
+// See getNewVerses() for the never-scheduled count.
 export function getDueVerses(DATA) {
   const now = Date.now();
   const due = [];
   DATA.forEach(group => {
     group.verses.forEach(v => {
       const e = getProgress(v.ref);
-      const isDue = !e.dueDate || new Date(e.dueDate).getTime() <= now;
-      if (isDue) {
+      if (e.dueDate && new Date(e.dueDate).getTime() <= now) {
         due.push({
           cat: group.cat,
           ref: v.ref,
           stage: e.stage,
-          overdueDays: e.dueDate ? Math.floor((now - new Date(e.dueDate).getTime()) / 86400000) : null,
+          overdueDays: Math.floor((now - new Date(e.dueDate).getTime()) / 86400000),
           suggested: suggestedModeForStage(e.stage)
         });
       }
     });
   });
-  due.sort((a, b) => (b.overdueDays ?? 9999) - (a.overdueDays ?? 9999));
+  due.sort((a, b) => b.overdueDays - a.overdueDays);
   return due;
+}
+
+// Verses with no dueDate yet — never been through a recall-based
+// session (recognition alone, via Dead Reckoning/Safe Harbor, doesn't
+// establish a review schedule). These want first exposure via a
+// category's normal practice flow, not a reinforcement queue.
+export function getNewVerses(DATA) {
+  const list = [];
+  DATA.forEach(group => {
+    group.verses.forEach(v => {
+      if (!getProgress(v.ref).dueDate) list.push({ cat: group.cat, ref: v.ref });
+    });
+  });
+  return list;
 }

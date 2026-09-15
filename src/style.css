@@ -115,7 +115,7 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 
 /* Retention-health stats, shown inline at the top of the review queue
    itself rather than leading the home screen. */
-.review-stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 18px; }
+.review-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin-bottom: 18px; }
 .review-stat span { display: block; font-size: 22px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 .review-stat small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
 .review-stat-risk span { color: var(--rust); }

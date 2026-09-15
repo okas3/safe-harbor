@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getNewVerses, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -233,7 +233,12 @@ function startPractice() { state.isReviewSession = false; state.stepConfigs = un
 // otherwise open to a meaningless "28 Due Today" before you've done
 // anything at all).
 function openReview() {
+  // "Due" here means genuinely fading and needing reinforcement — a
+  // verse that's never been practiced isn't due, it's just unstarted,
+  // and Review's queue/count should only ever be about reinforcement.
+  // See getNewVerses() for the "never started" count.
   const due = getDueVerses(DATA);
+  const newCount = getNewVerses(DATA).length;
   let mastered = 0;
   DATA.forEach(g => g.verses.forEach(v => {
     const e = getProgress(v.ref);
@@ -242,12 +247,13 @@ function openReview() {
   const atRisk = due.filter(d => (d.overdueDays ?? 0) > 3);
   document.getElementById('reviewStatsInline').innerHTML = `
     <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
+    <div class="review-stat"><span>${newCount}</span><small>New</small></div>
     <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
     <div class="review-stat${atRisk.length ? ' review-stat-risk' : ''}"><span>${atRisk.length}</span><small>At Risk</small></div>
   `;
   document.getElementById('reviewStartRow').innerHTML = due.length
     ? `<button class="btn primary wide" onclick="beginReviewSession()">Start Review (${due.length})</button>`
-    : `<div class="empty-hist">All caught up. Nothing due right now.</div>`;
+    : `<div class="empty-hist">Nothing due for reinforcement.${newCount ? ` ${newCount} new verse${newCount === 1 ? '' : 's'} waiting — practice a category to start them.` : ''}</div>`;
   // At Risk verses (badly overdue) are the only ones worth calling out
   // individually — everything else in the queue is covered by the
   // single Start Review flow above, not a row-per-verse list.

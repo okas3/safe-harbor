@@ -120,6 +120,31 @@ Any reintroduction needs to not repeat both of those mistakes:
 5. **Dual-coding v2** (#4) — hold until explicitly requested; reverses a
    just-made decision.
 
+## Addendum: New vs. Due for reinforcement
+
+Raised after the fact, not from the original critique: `getDueVerses()`
+treated any never-practiced verse (`!e.dueDate`) as "due" — technically
+correct SRS vocabulary (a new card is always due), but it conflated two
+different things under one label and one queue. Worse, the old sort's
+`?? 9999` fallback for never-scheduled verses meant a totally untouched
+verse outranked a genuinely-decaying one, so Review's "most overdue
+first" ordering was actively backwards. Split into `getDueVerses()`
+(only verses with a real dueDate in the past — genuine reinforcement)
+and `getNewVerses()` (never been through recall-based practice at all).
+Review's queue, count, and "Start Review" button are now scoped
+strictly to reinforcement; "New" is a separate, honest stat with its
+own guidance ("practice a category to start them") rather than being
+folded into a queue that implies you've already learned it once.
+
+One imprecision worth naming: "New" here means "no dueDate yet," which
+technically includes a verse that's been *recognized* (via Dead
+Reckoning/Safe Harbor) but never run through a recall mode — dueDate
+is only ever set by `recordRecall`. Calling that "New" is a slight
+misnomer (some progress exists), but the actionable response is
+identical either way (practice the category, `suggestedModeForStage`
+already routes correctly by actual stage), so it wasn't worth a third
+bucket.
+
 ## Implementation log
 
 Status of the above, updated as work lands:
