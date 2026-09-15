@@ -1,4 +1,4 @@
-# Safe Harbor — Anchor Scriptures
+# Anchor Scriptures
 
 A scripture memorization app: seven categories of ESV verses, seven
 practice modes, and a spaced-repetition layer tracking what's actually

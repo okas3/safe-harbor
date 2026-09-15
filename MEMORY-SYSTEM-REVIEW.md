@@ -1,4 +1,4 @@
-# Memory System Review — Safe Harbor / Anchor Scriptures
+# Memory System Review — Anchor Scriptures
 
 An expert-mnemonist evaluation of the app's learning design, done against
 the stated goals: memorize for life, scale to hundreds of verses over
