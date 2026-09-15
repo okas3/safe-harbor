@@ -28,10 +28,7 @@ npm install
 npm run dev
 ```
 
-Opens at `http://localhost:5173`. Note: the `/api` route (image
-uploads for memory hooks) isn't served by plain `npm run dev` — that
-needs `vercel dev` or a real deploy; everything else works fine
-locally.
+Opens at `http://localhost:5173`.
 
 ## Build for deployment
 
@@ -39,30 +36,22 @@ locally.
 npm run build
 ```
 
-Outputs a static site to `dist/`. Deployed on Vercel; the `/api`
-function additionally requires Blob storage enabled on the Vercel
-project (Dashboard → Storage → create a Blob store → link it) to
-provision `BLOB_READ_WRITE_TOKEN`.
+Outputs a static site to `dist/`.
 
 ## Project structure
 
 - `index.html` — page shell and view markup
 - `src/app.js` — app logic: state machine, grading, rendering
-- `src/verses.js` — verse data (7 categories × 4 verses, `tags: []`
-  scaffolded for future thematic linking)
+- `src/verses.js` — verse data (7 categories × 4 verses)
 - `src/difficulties.js` — difficulty tier definitions per mode
 - `src/icons.js` — hand-drawn SVG category icons
 - `src/progress.js` — spaced-repetition and mastery-stage tracking
-  (simplified SM-2), weak-word tracking, memory hooks
+  (simplified SM-2), weak-word tracking
 - `src/chunking.js` — phrase-splitting for Anchor Chain Build
-- `api/upload-hook-image.js` — Vercel serverless function storing
-  memory-hook images via `@vercel/blob`
 - `src/style.css` — the deep-sea/nautical visual theme
 - `MEMORY-SYSTEM-REVIEW.md` — the design rationale for the
   spaced-repetition/mastery layer, written up as an expert-mnemonist
   critique with a prioritized roadmap
-- `legacy/original-single-file.html` — the original single-file
-  version this was split from, kept for reference
 
 ## History & progress storage
 

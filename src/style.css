@@ -17,6 +17,12 @@
   --sea-dim: rgba(79,157,132,0.14);
   --rust: #c26a4f;
   --rust-dim: rgba(194,106,79,0.14);
+  --amber: #d6b23e;
+  --amber-dim: rgba(214,178,62,0.14);
+  --flame: #d9822b;
+  --flame-dim: rgba(217,130,43,0.14);
+  --red: #d64545;
+  --red-dim: rgba(214,69,69,0.14);
   --border: #1f3444;
   --border-lit: #3a5468;
 }
@@ -92,31 +98,7 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 }
 .verse-card-text { font-size: 15px; line-height: 1.6; color: var(--ink); }
 
-/* Dual-coding memory hooks: a mental-image note and/or a real image,
-   editable from the verse card, shown as a recall aid during
-   recall-mode practice. */
 .verse-card-badges { display: flex; align-items: center; gap: 10px; }
-.hook-icon-btn {
-  background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-faint);
-  width: 17px; height: 17px; flex-shrink: 0; transition: color 0.15s;
-}
-.hook-icon-btn svg { width: 100%; height: 100%; display: block; }
-.hook-icon-btn:hover { color: var(--ink-dim); }
-.hook-icon-btn.has-hook { color: var(--brass); }
-.hook-icon-btn.has-hook:hover { color: var(--brass-bright); }
-.hook-thumb { width: 100%; max-width: 140px; height: auto; border-radius: 4px; border: 1px solid var(--border); margin-top: 10px; display: block; }
-.hook-editor { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.hook-editor textarea {
-  width: 100%; min-height: 50px; background: var(--bg-deep); color: var(--ink);
-  border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px;
-  font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 13px; resize: vertical;
-}
-.hook-editor input[type="file"] { font-size: 12px; color: var(--ink-dim); }
-.hook-status { font-size: 11.5px; color: var(--ink-faint); font-style: italic; }
-
-.hook-recall { margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.hook-thumb-lg { width: 100%; max-width: 220px; height: auto; border-radius: 6px; border: 1px solid var(--border); }
-.hook-note-text { font-size: 13px; color: var(--ink-dim); font-style: italic; text-align: center; }
 
 /* Mastery stage badge — reused on verse cards and the due-review list. */
 .stage-badge {
@@ -177,12 +159,6 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 
 .cat-switcher { padding-top: 18px; border-top: 1px solid var(--border); margin-bottom: 20px; }
 .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.pill {
-  background: var(--surface); border: 1px solid var(--border); color: var(--ink-dim);
-  padding: 6px 12px; border-radius: 20px; font-size: 12.5px; cursor: pointer; transition: border-color 0.15s;
-}
-.pill:hover { border-color: var(--brass-dim); }
-.pill.active { border-color: var(--brass); color: var(--brass-bright); background: rgba(193,154,91,0.1); }
 .cat-pill {
   display: flex; align-items: center; gap: 7px; color: var(--ink-dim);
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
@@ -239,8 +215,15 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 }
 .ref-option:hover:not(:disabled) { border-color: var(--brass-dim); }
 .ref-option:disabled { cursor: default; }
-.ref-option.ok { border-color: var(--sea); background: var(--sea-dim); color: var(--sea); }
 .ref-option.bad { border-color: var(--rust); background: var(--rust-dim); color: var(--rust); }
+/* Tiers match the score exactly: 1st try green, 2nd yellow, 3rd
+   orange, 4th+ red — the color on the correct answer is the score. */
+/* Shared with Safe Harbor's matched chips — same attempt tiers, same
+   colors, wherever a multiple-choice/matching pick lands. */
+.ref-option.tier-1, .match-chip.matched.tier-1 { border-color: var(--sea); background: var(--sea-dim); color: var(--sea); }
+.ref-option.tier-2, .match-chip.matched.tier-2 { border-color: var(--amber); background: var(--amber-dim); color: var(--amber); }
+.ref-option.tier-3, .match-chip.matched.tier-3 { border-color: var(--flame); background: var(--flame-dim); color: var(--flame); }
+.ref-option.tier-4, .match-chip.matched.tier-4 { border-color: var(--red); background: var(--red-dim); color: var(--red); }
 .rate-row { display: flex; gap: 10px; margin-top: 4px; }
 .rate-btn, .action-btn {
   flex: 1; padding: 13px 8px; border-radius: 4px; border: none;
@@ -294,34 +277,26 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 }
 .match-chip:hover { border-color: var(--brass-dim); }
 .match-chip.selected { border-color: var(--brass); background: rgba(193,154,91,0.1); }
-.match-chip.matched { border-color: var(--sea); background: var(--sea-dim); color: var(--sea); cursor: default; opacity: 0.65; }
+.match-chip.matched { cursor: default; opacity: 0.65; }
 .match-stats {
   text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px;
   font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;
 }
 
-.hist-summary { display: flex; justify-content: space-around; margin-bottom: 18px; text-align: center; }
-.hist-summary div span { display: block; font-size: 23px; color: var(--brass-bright); font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
-.hist-summary div small { color: var(--ink-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; }
-table.hist-table {
-  width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px;
-  font-family: 'Instrument Sans', -apple-system, sans-serif;
+/* Just Score and Time now (no Date, no Difficulty — both were either
+   non-actionable or already implied by the leaderboard's own scope).
+   A left-aligned row list matching the app's other lists (due-item,
+   review-item) instead of a floating table disconnected from the
+   "High Score" label above it. */
+.lb-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px; border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size: 14px;
 }
-table.hist-table th {
-  text-align: left; color: var(--ink-faint); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--border);
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; font-family: 'JetBrains Mono', monospace;
-}
-table.hist-table td { padding: 7px 4px; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Score and Time are always the last two columns (in both the full
-   History table and the score screen's leaderboard) — pin them to a
-   fixed width and right-align like the numbers they are, letting
-   table-layout:fixed split the remaining width evenly across
-   whichever columns come before them. */
-table.hist-table th:nth-last-child(-n+2), table.hist-table td:nth-last-child(-n+2) {
-  width: 58px; text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;
-}
-table.hist-table tr.hi-score-row td { color: var(--brass-bright); font-weight: 600; }
-table.hist-table tr.hi-score-row td:first-child { border-left: 2px solid var(--brass); padding-left: 6px; }
+.lb-row.hi-score-row { border-left: 2px solid var(--brass); padding-left: 10px; }
+.lb-score { color: var(--ink); }
+.lb-time { color: var(--ink-faint); }
+.lb-row.hi-score-row .lb-score, .lb-row.hi-score-row .lb-time { color: var(--brass-bright); font-weight: 600; }
 .empty-hist { text-align: center; color: var(--ink-faint); padding: 30px 10px; font-size: 14px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
 
 .about-content { max-width: 62ch; margin: 0 auto; }

@@ -2,9 +2,9 @@
 // category means rather than as generic decoration. All share the
 // same 24x24 stroke style so they read as one consistent set — the
 // ship's instruments on the wall, not a stock icon pack.
-const svg = (inner, { fill = false } = {}) => `
+const svg = (inner) => `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-       stroke-linecap="round" stroke-linejoin="round" ${fill ? '' : ''}>${inner}</svg>
+       stroke-linecap="round" stroke-linejoin="round">${inner}</svg>
 `;
 
 export const CATEGORY_ICONS = {

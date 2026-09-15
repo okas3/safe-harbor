@@ -1,22 +1,25 @@
+// `name` is the full descriptive label for the mode-select dropdown
+// ("Easy (One Category)"); `short` is just the tier word, for compact
+// title bars (round header, score screen) where stacking that same
+// descriptive text after the mode name with its own separator reads
+// as visual noise (e.g. "Safe Harbor · Easy (One Category)").
 export const FADE_DIFFS = [
-  { id: 'veryeasy', name: 'Very Easy — 10% Blanked', frac: 0.10 },
-  { id: 'easy', name: 'Easy — 25% Blanked', frac: 0.25 },
-  { id: 'normal', name: 'Medium — 50% Blanked', frac: 0.50 },
-  { id: 'hard', name: 'Hard — 75% Blanked', frac: 0.75 },
-  { id: 'nocues', name: 'Very Hard — Nearly All Blanked', frac: 0.92 }
+  { id: 'veryeasy', name: 'Very Easy (10% Blanked)', short: 'Very Easy', frac: 0.10 },
+  { id: 'easy', name: 'Easy (25% Blanked)', short: 'Easy', frac: 0.25 },
+  { id: 'normal', name: 'Medium (50% Blanked)', short: 'Medium', frac: 0.50 },
+  { id: 'hard', name: 'Hard (75% Blanked)', short: 'Hard', frac: 0.75 },
+  { id: 'nocues', name: 'Very Hard (Nearly All Blanked)', short: 'Very Hard', frac: 0.92 }
 ];
 
 export const LETTER_DIFFS = [
-  { id: 'normal', name: 'Easy — Every Word Cued', every: 1 },
-  { id: 'hard', name: 'Hard — Every Other Word Cued', every: 2 }
+  { id: 'normal', name: 'Easy (Every Word Cued)', short: 'Easy', every: 1 },
+  { id: 'hard', name: 'Hard (Every Other Word Cued)', short: 'Hard', every: 2 }
 ];
 
-export const MATCH_DIFFS = [
-  { id: 'easy', name: 'Easy — One Category' },
-  { id: 'hard', name: 'Hard — Mixed Categories' }
+const ONE_CATEGORY_DIFFS = [
+  { id: 'easy', name: 'Easy (One Category)', short: 'Easy' },
+  { id: 'hard', name: 'Hard (Mixed Categories)', short: 'Hard' }
 ];
 
-export const REVERSE_DIFFS = [
-  { id: 'easy', name: 'Easy — One Category' },
-  { id: 'hard', name: 'Hard — Mixed Categories' }
-];
+export const MATCH_DIFFS = ONE_CATEGORY_DIFFS;
+export const REVERSE_DIFFS = ONE_CATEGORY_DIFFS;

@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, setMemoryHook } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -15,7 +15,7 @@ const MODES = [
   { id: 'reverse', label: 'Dead Reckoning', hint: 'Name the Reference', desc: 'Read the verse with no reference shown, then pick which passage it comes from.' },
   { id: 'fade', label: 'Fathom by Fathom', hint: 'Fill in the Blanks', desc: 'Words go blank as you dial up the depth. Type the missing word in place, graded on the spot.' },
   { id: 'letters', label: 'Chain of Initials', hint: 'First-Letter Cues', desc: 'Only initials shown. Recite from the skeleton, then type the full verse to be graded.' },
-  { id: 'weaklink', label: 'Weak Link', hint: 'Drill Your Misses', desc: 'Only the specific words you keep getting wrong are blanked — everything else stays visible for context.' },
+  { id: 'weaklink', label: 'Weak Link', hint: 'Drill Your Misses', desc: 'Only the specific words you keep getting wrong are blanked. Everything else stays visible for context.' },
   { id: 'chainbuild', label: 'Anchor Chain Build', hint: 'Build It Phrase by Phrase', desc: 'Add one phrase at a time, reciting everything built so far before the next link goes on.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
@@ -84,18 +84,19 @@ function attemptsFor(cat) {
   return history.filter(h => h.cat === cat).length;
 }
 
-// Builds the <optgroup>/<option> tree once. Option values encode
-// "mode:diffId" (or just "mode" for By Heart, which has no tiers) so
-// the change handler can recover both state.mode and state.difficulty
-// from a single select value.
+// A flat list, no optgroups — mode and difficulty combined into one
+// option's own visible text (e.g. "Fathom by Fathom (Hard)"), so a
+// single pick sets both at once (fewer clicks than a separate
+// difficulty control) while the closed select still always shows
+// which mode is selected (unlike nesting difficulty under an
+// optgroup, whose label vanishes once the select collapses).
 function buildModeOptions() {
   const select = document.getElementById('modeSelect');
   select.innerHTML = MODES.map(m => {
     const diffs = diffsForMode(m.id);
-    const options = diffs
-      ? diffs.map(d => `<option value="${m.id}:${d.id}">${d.name}</option>`).join('')
+    return diffs
+      ? diffs.map(d => `<option value="${m.id}:${d.id}">${m.label} (${d.short})</option>`).join('')
       : `<option value="${m.id}">${m.label}</option>`;
-    return `<optgroup label="${m.label} — ${m.hint}">${options}</optgroup>`;
   }).join('');
 }
 
@@ -117,45 +118,18 @@ function renderHome() {
 
   document.getElementById('verseList').innerHTML = group.verses.map(v => {
     const stage = getProgress(v.ref).stage;
-    const hook = getProgress(v.ref).memoryHook;
-    const hasHook = hook.imageUrl || hook.note;
     return `
     <div class="verse-card">
       <div class="verse-card-top">
         <div class="verse-card-ref">${v.ref}</div>
         <div class="verse-card-badges">
-          <button class="hook-icon-btn${hasHook ? ' has-hook' : ''}" title="${hasHook ? 'Edit memory hook' : 'Add memory hook'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 18h6"/><path d="M10 22h4"/>
-              <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/>
-            </svg>
-          </button>
           <div class="stage-badge stage-${stage}">${STAGE_LABELS[stage]}</div>
         </div>
       </div>
       <div class="verse-card-text">${v.text}</div>
-      ${hook.imageUrl ? `<img class="hook-thumb" src="${hook.imageUrl}" alt="Memory hook for ${v.ref}">` : ''}
-      <div class="hook-editor" style="display:none;">
-        <textarea class="hook-note-input" placeholder="Describe a mental picture or keyword association…">${hook.note || ''}</textarea>
-        <input type="file" accept="image/*" class="hook-file-input">
-        <div class="hook-status"></div>
-      </div>
     </div>
   `;
   }).join('');
-
-  document.querySelectorAll('#verseList .verse-card').forEach((card, i) => {
-    const v = group.verses[i];
-    card.querySelector('.hook-icon-btn').onclick = () => {
-      const editor = card.querySelector('.hook-editor');
-      editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
-    };
-    card.querySelector('.hook-note-input').onblur = (e) => {
-      const existing = getProgress(v.ref).memoryHook;
-      setMemoryHook(v.ref, { note: e.target.value, imageUrl: existing.imageUrl });
-    };
-    card.querySelector('.hook-file-input').onchange = (e) => uploadHookImage(v.ref, e.target, card);
-  });
 
   // Weak Link only makes sense once this category actually has tracked
   // misses to drill — disable the option entirely otherwise, rather
@@ -163,8 +137,16 @@ function renderHome() {
   const weakOpt = document.querySelector('#modeSelect option[value="weaklink"]');
   if (weakOpt) weakOpt.disabled = !group.verses.some(v => Object.keys(getProgress(v.ref).wordMisses).length > 0);
 
-  const select = document.getElementById('modeSelect');
-  select.value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
+  // Hard mode (Safe Harbor, Dead Reckoning) mixes in a second category —
+  // disable it until there's actually another category you've been
+  // exposed to, same reasoning as gating Weak Link above.
+  const noOtherVisited = !visitedCategories(state.cat).length;
+  ['match:hard', 'reverse:hard'].forEach(val => {
+    const opt = document.querySelector(`#modeSelect option[value="${val}"]`);
+    if (opt) opt.disabled = noOtherVisited;
+  });
+
+  document.getElementById('modeSelect').value = state.difficulty ? `${state.mode}:${state.difficulty.id}` : state.mode;
   document.getElementById('modeDescText').textContent = MODES.find(m => m.id === state.mode).desc;
 
   const catPills = document.getElementById('catPills');
@@ -181,32 +163,6 @@ function renderHome() {
     div.onclick = () => selectCategory(g.cat);
     catPills.appendChild(div);
   });
-}
-
-async function uploadHookImage(ref, inputEl, card) {
-  const file = inputEl.files[0];
-  if (!file) return;
-  const statusEl = card.querySelector('.hook-status');
-  statusEl.textContent = 'Uploading…';
-  try {
-    const res = await fetch('/api/upload-hook-image', {
-      method: 'POST',
-      headers: { 'content-type': file.type || 'application/octet-stream', 'x-filename': encodeURIComponent(file.name) },
-      body: file
-    });
-    if (!res.ok) throw new Error('upload failed');
-    const { url } = await res.json();
-    const existing = getProgress(ref).memoryHook;
-    setMemoryHook(ref, { note: existing.note, imageUrl: url });
-    statusEl.textContent = 'Saved.';
-    renderHome();
-  } catch (e) {
-    // Most likely cause: this is running under plain `npm run dev`
-    // (Vite doesn't serve /api routes) or Blob storage isn't linked
-    // to the Vercel project yet. Degrade to text-note-only rather
-    // than blocking the rest of the app on it.
-    statusEl.textContent = 'Image upload unavailable right now — your note still saves.';
-  }
 }
 
 function selectCategory(cat) {
@@ -226,7 +182,7 @@ function selectCategory(cat) {
   renderHome();
 }
 
-function startPractice() { state.isReviewSession = false; beginSession(); }
+function startPractice() { state.isReviewSession = false; state.stepConfigs = undefined; beginSession(); }
 
 // Retention-health strip: what's actually due, what's holding, what's
 // slipping — shown when you actually open Review, not leading the
@@ -235,41 +191,68 @@ function startPractice() { state.isReviewSession = false; beginSession(); }
 // anything at all).
 function openReview() {
   const due = getDueVerses(DATA);
-  let mastered = 0, atRisk = 0;
+  let mastered = 0;
   DATA.forEach(g => g.verses.forEach(v => {
     const e = getProgress(v.ref);
     if (e.stage === 'mastered' || e.stage === 'maintenance') mastered++;
   }));
-  due.forEach(d => { if ((d.overdueDays ?? 0) > 3) atRisk++; });
+  const atRisk = due.filter(d => (d.overdueDays ?? 0) > 3);
   document.getElementById('reviewStatsInline').innerHTML = `
     <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
     <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
-    <div class="review-stat${atRisk ? ' review-stat-risk' : ''}"><span>${atRisk}</span><small>At Risk</small></div>
+    <div class="review-stat${atRisk.length ? ' review-stat-risk' : ''}"><span>${atRisk.length}</span><small>At Risk</small></div>
   `;
-  document.getElementById('dueList').innerHTML = due.length ? due.map((d, i) => `
+  document.getElementById('reviewStartRow').innerHTML = due.length
+    ? `<button class="btn primary wide" onclick="beginReviewSession()">Start Review (${due.length})</button>`
+    : `<div class="empty-hist">All caught up. Nothing due right now.</div>`;
+  // At Risk verses (badly overdue) are the only ones worth calling out
+  // individually — everything else in the queue is covered by the
+  // single Start Review flow above, not a row-per-verse list.
+  document.getElementById('dueList').innerHTML = atRisk.length ? atRisk.map((d, i) => `
     <div class="due-item" data-idx="${i}">
       <div class="due-item-main">
         <div class="due-item-ref">${d.ref}</div>
-        <div class="due-item-cat">${d.cat}${d.overdueDays ? ` · ${d.overdueDays}d overdue` : ''}</div>
+        <div class="due-item-cat">${d.cat} · ${d.overdueDays}d overdue</div>
       </div>
       <div class="stage-badge stage-${d.stage}">${STAGE_LABELS[d.stage]}</div>
     </div>
-  `).join('') : `<div class="empty-hist">All caught up — nothing due right now.</div>`;
+  `).join('') : '';
   document.querySelectorAll('.due-item').forEach((el, i) => {
-    el.onclick = () => startReviewItem(due[i]);
+    el.onclick = () => startReviewItem(atRisk[i]);
   });
+  reviewQueue = due;
   showStage('reviewArea', due.length ? `${due.length} Due for Review` : 'Review');
 }
 
-function startReviewItem(item) {
+function resolveReviewItem(item) {
   const group = DATA.find(g => g.cat === item.cat);
   const v = group.verses.find(x => x.ref === item.ref);
-  state.cat = item.cat;
-  state.mode = item.suggested.mode;
   const diffs = diffsForMode(item.suggested.mode);
-  state.difficulty = diffs ? (diffs.find(d => d.id === item.suggested.diffId) || diffs[0]) : null;
-  beginSession([v]);
+  const difficulty = diffs ? (diffs.find(d => d.id === item.suggested.diffId) || diffs[0]) : null;
+  return { verse: v, mode: item.suggested.mode, difficulty, cat: item.cat };
+}
+
+function startReviewItem(item) {
+  const resolved = resolveReviewItem(item);
+  state.cat = resolved.cat;
+  state.mode = resolved.mode;
+  state.difficulty = resolved.difficulty;
+  state.stepConfigs = undefined;
+  beginSession([resolved.verse]);
   state.isReviewSession = true;
+}
+
+let reviewQueue = [];
+
+// Runs every due verse back to back, each in its own suggested mode,
+// instead of making someone hand-pick verses one at a time from a
+// list that could be hundreds of rows long.
+function beginReviewSession() {
+  const resolved = reviewQueue.map(resolveReviewItem);
+  if (!resolved.length) return;
+  state.stepConfigs = resolved.map(r => ({ mode: r.mode, difficulty: r.difficulty, cat: r.cat }));
+  state.isReviewSession = true;
+  beginSession(resolved.map(r => r.verse));
 }
 
 function showView(id) {
@@ -325,11 +308,22 @@ function stopTimer() {
 
 function cancelSession() {
   matchState = null;
+  state.stepConfigs = undefined;
   showStage('verseList');
 }
 
 function modeLabel(m) {
   return MODES.find(x => x.id === m)?.label || m;
+}
+
+// Compact title bars (round header, score screen) want just the tier
+// word — the full descriptive name ("Easy — One Category") is for the
+// mode-select dropdown, and stacking it after the mode name with its
+// own separator reads as clutter ("Safe Harbor · Easy — One Category").
+function roundTitle(mode, difficulty) {
+  const label = modeLabel(mode);
+  if (!difficulty) return label;
+  return `${label} · ${difficulty.short || difficulty.name}`;
 }
 
 function normWord(w) {
@@ -356,9 +350,9 @@ function beginSession(verses) {
   state.chunkIndex = undefined;
   state.chunkVerseRef = undefined;
 
-  if (state.mode === 'match') { beginMatch(); return; }
+  if (!state.stepConfigs && state.mode === 'match') { beginMatch(); return; }
 
-  const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  const title = state.stepConfigs ? 'Review' : roundTitle(state.mode, state.difficulty);
   showStage('practiceArea', title);
   showStep();
 }
@@ -372,6 +366,15 @@ function replaySession() {
 
 function showStep() {
   if (state.stepIndex >= state.sessionVerses.length) { finishSession(); return; }
+  // A review session mixes verses at different stages, each needing
+  // its own suggested mode/difficulty/category rather than one mode
+  // for the whole session.
+  if (state.stepConfigs) {
+    const cfg = state.stepConfigs[state.stepIndex];
+    state.mode = cfg.mode;
+    state.difficulty = cfg.difficulty;
+    state.cat = cfg.cat;
+  }
   document.getElementById('progressLine').innerHTML = `
     <div class="chain-line">${state.sessionVerses.map((_, i) =>
       `<div class="chain-link${i <= state.stepIndex ? ' set' : ''}"></div>`).join('')}</div>
@@ -385,21 +388,6 @@ function showStep() {
   else if (state.mode === 'weaklink') renderWeakLink(v);
   else if (state.mode === 'chainbuild') renderChainBuild(v);
   else renderType(v);
-}
-
-// Shown during recall modes only (never recognition modes — Dead
-// Reckoning and Safe Harbor test identifying/matching a reference, and
-// an imagery cue would trivialize that). Dual coding is meant to help
-// you *produce* the verse, not give away which option to pick.
-function hookSnippetHtml(ref) {
-  const hook = getProgress(ref).memoryHook;
-  if (!hook.imageUrl && !hook.note) return '';
-  return `
-    <div class="hook-recall">
-      ${hook.imageUrl ? `<img class="hook-thumb hook-thumb-lg" src="${hook.imageUrl}" alt="Memory hook">` : ''}
-      ${hook.note ? `<div class="hook-note-text">${hook.note}</div>` : ''}
-    </div>
-  `;
 }
 
 function renderFade(v) {
@@ -424,9 +412,7 @@ function renderFade(v) {
     return `<span class="word-static">${w}</span>`;
   }).join(' ');
   card.innerHTML = `
-    <div class="theme-tag">${state.cat} · fade</div>
     <div class="ref">${v.ref}</div>
-    ${hookSnippetHtml(v.ref)}
     <div class="verse-text">${spans}</div>
   `;
   document.getElementById('rateRow').style.display = 'flex';
@@ -462,10 +448,9 @@ function renderWeakLink(v) {
     // A sibling verse in this category has weak words but this one
     // doesn't (yet) — nothing to drill, don't block the session on it.
     card.innerHTML = `
-      <div class="theme-tag">${state.cat} · weak link</div>
       <div class="ref">${v.ref}</div>
       <div class="verse-text">${v.text}</div>
-      <div class="tap-hint">No tracked misses for this verse yet — nothing to drill.</div>
+      <div class="tap-hint">No tracked misses for this verse yet. Nothing to drill.</div>
     `;
     document.getElementById('rateRow').style.display = 'flex';
     document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
@@ -479,9 +464,7 @@ function renderWeakLink(v) {
     return `<span class="word-static">${w}</span>`;
   }).join(' ');
   card.innerHTML = `
-    <div class="theme-tag">${state.cat} · weak link</div>
     <div class="ref">${v.ref}</div>
-    ${hookSnippetHtml(v.ref)}
     <div class="verse-text">${spans}</div>
   `;
   document.getElementById('rateRow').style.display = 'flex';
@@ -507,19 +490,24 @@ function checkWeakLink() {
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
 
-function renderLettersIntro(v) {
-  const words = v.text.split(' ');
-  const every = state.difficulty.every;
-  const initials = words.map((w, i) => {
+// First-letter cue for a stretch of text — every `every`th word shows
+// its initial, the rest a blank placeholder. Shared by Chain of
+// Initials (cueing the whole verse before one big recall) and Anchor
+// Chain Build (cueing just the next uncalled phrase, so the boundary
+// and shape of "the next bit to produce" is never a blind guess).
+function initialsCue(text, every) {
+  return text.split(' ').map((w, i) => {
     if (i % every !== 0) return '▁';
     const m = w.match(/[A-Za-z]/);
     return m ? m[0] : w[0];
   }).join(' ');
+}
+
+function renderLettersIntro(v) {
+  const initials = initialsCue(v.text, state.difficulty.every);
   const card = document.getElementById('flashcard');
   card.innerHTML = `
-    <div class="theme-tag">${state.cat} · first-letter cue</div>
     <div class="ref">${v.ref}</div>
-    ${hookSnippetHtml(v.ref)}
     <div class="letters-line">${initials}</div>
     <div class="tap-hint">Recite it from these cues, then type it below</div>
   `;
@@ -533,9 +521,7 @@ function renderTypeArea(v, afterLetters) {
   const card = document.getElementById('flashcard');
   if (!afterLetters) {
     card.innerHTML = `
-      <div class="theme-tag">${state.cat} · type from memory</div>
       <div class="ref">${v.ref}</div>
-      ${hookSnippetHtml(v.ref)}
       <textarea id="typeInput" placeholder="Type the verse from memory..."></textarea>
       <div id="typeResult"></div>
     `;
@@ -581,12 +567,13 @@ function renderChainBuild(v) {
     state.chunkVerseRef = v.ref;
   }
   const settled = state.chunks.slice(0, state.chunkIndex).join(' ');
+  const nextPhrase = state.chunks[state.chunkIndex];
   const card = document.getElementById('flashcard');
   card.innerHTML = `
-    <div class="theme-tag">${state.cat} · chain build · link ${state.chunkIndex + 1} of ${state.chunks.length}</div>
+    <div class="theme-tag">Link ${state.chunkIndex + 1} of ${state.chunks.length}</div>
     <div class="ref">${v.ref}</div>
-    ${hookSnippetHtml(v.ref)}
     ${settled ? `<div class="verse-text chain-settled">${settled}</div>` : ''}
+    <div class="letters-line">${initialsCue(nextPhrase, 1)}</div>
     <div class="tap-hint">${settled ? 'Type everything so far, including the new phrase:' : 'Type the first phrase:'}</div>
     <textarea id="typeInput" placeholder="Type it..."></textarea>
     <div id="typeResult"></div>
@@ -643,23 +630,50 @@ function nextStep() {
   showStep();
 }
 
+// Score tiers by how many tries it took to land on the correct
+// answer — 1st try is a clean recognition, each wrong guess before it
+// is a partial miss, not a hard fail. The color on the eventual
+// correct pick always matches this same tier, so the visual and the
+// score never disagree. Shared by every multiple-choice/matching mode
+// (Dead Reckoning, Safe Harbor) — typed recall modes grade in one
+// shot instead, since letting a blank be retried until correct would
+// be guess-and-check, not recollection.
+const ATTEMPT_TIERS = [
+  { max: 1, score: 100, cls: 'tier-1' },
+  { max: 2, score: 66, cls: 'tier-2' },
+  { max: 3, score: 33, cls: 'tier-3' },
+  { max: Infinity, score: 0, cls: 'tier-4' }
+];
+let reverseWrongCount = 0;
+
+// Hard mode mixes in a second category to test distinguishing similar
+// references across categories — that only works as a real test
+// against a category you've actually been exposed to. A category
+// counts as visited once at least one of its verses has moved past
+// 'new' (i.e. you've recognized or recalled it at least once); a
+// completely untouched category would just be blind guessing, not a
+// harder version of the same test.
+function visitedCategories(excludeCat) {
+  return DATA.filter(g => g.cat !== excludeCat && g.verses.some(v => getProgress(v.ref).stage !== 'new'));
+}
+
 function renderReverse(v) {
   // Distractor pool: the rest of the current category always; on Hard,
-  // also pull in one other whole category for a wider, tougher pool —
-  // same pattern as Safe Harbor's difficulty split.
+  // also pull in one other *visited* category for a wider, tougher
+  // pool — same pattern as Safe Harbor's difficulty split.
   const group = DATA.find(g => g.cat === state.cat);
   let pool = group.verses.filter(x => x.ref !== v.ref).map(x => x.ref);
-  if (state.difficulty.id === 'hard') {
-    const others = DATA.filter(g => g.cat !== state.cat);
+  const others = state.difficulty.id === 'hard' ? visitedCategories(state.cat) : [];
+  if (others.length) {
     const other = others[Math.floor(Math.random() * others.length)];
     pool = pool.concat(other.verses.map(x => x.ref));
   }
   pool = pool.sort(() => Math.random() - 0.5).slice(0, 3);
   const options = [v.ref, ...pool].sort(() => Math.random() - 0.5);
 
+  reverseWrongCount = 0;
   const card = document.getElementById('flashcard');
   card.innerHTML = `
-    <div class="theme-tag">${state.cat} · dead reckoning</div>
     <div class="verse-text">${v.text}</div>
     <div class="ref-options" id="refOptions">
       ${options.map(r => `<button class="ref-option" data-ref="${r.replace(/"/g, '&quot;')}">${r}</button>`).join('')}
@@ -672,14 +686,22 @@ function renderReverse(v) {
 }
 function checkReverse(btn, correctRef) {
   if (btn.disabled) return;
-  const ok = btn.dataset.ref === correctRef;
-  document.querySelectorAll('.ref-option').forEach(o => {
-    o.disabled = true;
-    if (o.dataset.ref === correctRef) o.classList.add('ok');
-    else if (o === btn) o.classList.add('bad');
-  });
-  if (ok) recordRecognition(correctRef);
-  state.results.push({ ref: correctRef, score: ok ? 100 : 0, detail: ok ? 'Picked the right reference' : `Picked ${btn.dataset.ref}` });
+  if (btn.dataset.ref !== correctRef) {
+    // Wrong guesses don't end the round — keep guessing until the
+    // correct reference is found, same as the map-quiz pattern this
+    // is modeled on. Each miss is just disabled + marked so it can't
+    // be re-picked.
+    reverseWrongCount++;
+    btn.disabled = true;
+    btn.classList.add('bad');
+    return;
+  }
+  const tier = ATTEMPT_TIERS.find(t => reverseWrongCount + 1 <= t.max);
+  document.querySelectorAll('.ref-option').forEach(o => { o.disabled = true; });
+  btn.classList.add(tier.cls);
+  recordRecognition(correctRef);
+  const detail = tier.score === 100 ? 'Picked the right reference' : `Picked the right reference after ${reverseWrongCount + 1} tries`;
+  state.results.push({ ref: correctRef, score: tier.score, detail });
   document.getElementById('rateRow').style.display = 'flex';
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
@@ -689,10 +711,12 @@ function beginMatch() {
   let pairSource = group.verses.map(v => ({ ref: v.ref, text: v.text, cat: state.cat }));
   let snippetLen = 999;
   if (state.difficulty.id === 'hard') {
-    const others = DATA.filter(g => g.cat !== state.cat);
-    const other = others[Math.floor(Math.random() * others.length)];
-    pairSource = pairSource.concat(other.verses.map(v => ({ ref: v.ref, text: v.text, cat: other.cat })));
-    snippetLen = 6;
+    const others = visitedCategories(state.cat);
+    if (others.length) {
+      const other = others[Math.floor(Math.random() * others.length)];
+      pairSource = pairSource.concat(other.verses.map(v => ({ ref: v.ref, text: v.text, cat: other.cat })));
+      snippetLen = 6;
+    }
   }
   const snippetOf = (text) => {
     const words = text.split(' ');
@@ -701,10 +725,10 @@ function beginMatch() {
   const refs = pairSource.map(p => ({ ref: p.ref })).sort(() => Math.random() - 0.5);
   const texts = pairSource.map(p => ({ ref: p.ref, snippet: snippetOf(p.text) })).sort(() => Math.random() - 0.5);
 
-  matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, selectedRef: null, startTime: Date.now() };
+  matchState = { pairSource, refs, texts, matchedCount: 0, total: pairSource.length, mistakes: 0, attempts: {}, selectedRef: null, startTime: Date.now() };
 
   renderMatch();
-  showStage('matchArea', modeLabel(state.mode) + ' · ' + state.difficulty.name);
+  showStage('matchArea', roundTitle(state.mode, state.difficulty));
 }
 
 function renderMatch() {
@@ -713,12 +737,16 @@ function renderMatch() {
   const textCol = document.getElementById('matchTextCol');
   refCol.innerHTML = '';
   textCol.innerHTML = '';
+  // A matched pair is colored by how many wrong texts were tried
+  // against its reference before the match landed — same tiering as
+  // Dead Reckoning, so a clean first-try match reads green and a
+  // pair that took several misses reads progressively hotter.
   matchState.refs.forEach(r => {
     const div = document.createElement('div');
     div.className = 'match-chip';
     div.textContent = r.ref;
     div.dataset.ref = r.ref;
-    if (r.matched) div.classList.add('matched');
+    if (r.matched) div.classList.add('matched', tierFor(matchState.attempts[r.ref]).cls);
     if (matchState.selectedRef === r.ref && !r.matched) div.classList.add('selected');
     if (!r.matched) div.onclick = () => selectRef(r.ref);
     refCol.appendChild(div);
@@ -728,13 +756,21 @@ function renderMatch() {
     div.className = 'match-chip';
     div.textContent = t.snippet;
     div.dataset.ref = t.ref;
-    if (t.matched) div.classList.add('matched');
+    if (t.matched) div.classList.add('matched', tierFor(matchState.attempts[t.ref]).cls);
     if (!t.matched) div.onclick = () => selectText(t.ref);
     textCol.appendChild(div);
   });
 }
+function tierFor(wrongCount) {
+  return ATTEMPT_TIERS.find(t => (wrongCount || 0) + 1 <= t.max);
+}
 function selectRef(ref) {
-  matchState.selectedRef = (matchState.selectedRef === ref) ? null : ref;
+  // Re-clicking the already-selected ref used to toggle it off with no
+  // visual cue — an easy accidental double-click that silently
+  // deselects it, so the next click on its correct text does nothing
+  // and the round looks stuck. Selecting is idempotent instead: only
+  // clicking a *different* ref changes the selection.
+  matchState.selectedRef = ref;
   renderMatch();
 }
 function selectText(ref) {
@@ -749,6 +785,7 @@ function selectText(ref) {
     if (matchState.matchedCount === matchState.total) finishMatch();
   } else {
     matchState.mistakes++;
+    matchState.attempts[chosenRef] = (matchState.attempts[chosenRef] || 0) + 1;
     matchState.selectedRef = null;
     renderMatch();
   }
@@ -771,8 +808,12 @@ function finishMatch() {
 function finishSession() {
   const timeSec = Math.round((Date.now() - state.startTime) / 1000);
   const avg = Math.round(state.results.reduce((s, r) => s + r.score, 0) / state.results.length);
-  logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '—', avg, timeSec);
+  // A review session spans multiple categories and modes, so it
+  // doesn't fit the per-cat/mode leaderboard schema — only log
+  // straight single-mode practice sessions.
+  if (!state.stepConfigs) logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '', avg, timeSec);
   showScoreScreen(avg, timeSec, state.results, [{ label: 'Verses', value: state.results.length }]);
+  state.stepConfigs = undefined;
 }
 
 function logAttempt(cat, mode, difficulty, score, timeSec) {
@@ -803,9 +844,23 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';
   }
-  document.getElementById('scoreHistoryBody').innerHTML = historyMarkup(5, { cat: state.cat, mode: modeLabel(state.mode) });
+  const scoreHistory = document.getElementById('scoreHistoryBody');
+  const scoreHistoryLabel = scoreHistory.previousElementSibling;
+  if (state.stepConfigs) {
+    // Mixed-mode, mixed-category review session — no single cat/mode
+    // leaderboard applies here.
+    scoreHistory.innerHTML = '';
+    if (scoreHistoryLabel) scoreHistoryLabel.style.display = 'none';
+  } else {
+    if (scoreHistoryLabel) scoreHistoryLabel.style.display = '';
+    scoreHistory.innerHTML = leaderboardMarkup(5, state.cat, modeLabel(state.mode), state.difficulty ? state.difficulty.name : '');
+  }
   document.getElementById('nextDueBtn').style.display = state.isReviewSession ? 'block' : 'none';
-  const title = modeLabel(state.mode) + (state.difficulty ? ' · ' + state.difficulty.name : '');
+  // A flowing review session's queue isn't a single cat/mode/difficulty
+  // config replaySession() can reconstruct — "Next Due Verse" is
+  // already the sensible restart action here.
+  document.getElementById('playAgainBtn').style.display = state.stepConfigs ? 'none' : 'block';
+  const title = state.stepConfigs ? 'Review' : roundTitle(state.mode, state.difficulty);
   showStage('scoreArea', title);
 }
 function toggleReview() {
@@ -813,96 +868,30 @@ function toggleReview() {
   el.style.display = el.style.display === 'none' ? 'flex' : 'none';
 }
 
-// Shared between the full History view (no filter, every column) and
-// the compact preview on the score screen (filtered to the category +
-// mode just played, where those two columns and the avg-score tile
-// would just repeat the same value on every row and are dropped).
-function historyMarkup(limit, filter, catFilter) {
-  let entries = filter ? history.filter(h => h.cat === filter.cat && h.mode === filter.mode) : history;
-  if (catFilter) entries = entries.filter(h => catFilter.includes(h.cat));
+// The score screen's "High Score" preview: entries for the exact
+// category + mode just played, ranked by best score first (fastest
+// time as tiebreaker) so row one is literally the record to beat.
+function leaderboardMarkup(limit, cat, mode, difficulty) {
+  // Scoped to the exact cat + mode + difficulty just played — every
+  // row is already that one difficulty, so a dedicated column would
+  // just repeat the same value down the whole table.
+  const entries = history.filter(h => h.cat === cat && h.mode === mode && h.difficulty === difficulty)
+    .slice().sort((a, b) => b.score - a.score || a.timeSec - b.timeSec);
   if (!entries.length) {
     return `<div class="empty-hist">No attempts logged yet. Run a category and it'll show up here.</div>`;
   }
-  // Filtered = the score screen's leaderboard, not a log: rank by best
-  // score first, fastest time as the tiebreaker, so row one is
-  // literally the record to beat. Unfiltered (the full History view)
-  // stays in the natural most-recent-first order.
-  if (filter) entries = entries.slice().sort((a, b) => b.score - a.score || a.timeSec - b.timeSec);
-  const totalAttempts = entries.length;
-  const bestOverall = Math.max(...entries.map(h => h.score));
-  const rows = entries.slice(0, limit).map((h, i) => {
-    const d = new Date(h.ts);
-    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return entries.slice(0, limit).map((h, i) => {
     const time = `${Math.floor(h.timeSec / 60)}:${(h.timeSec % 60).toString().padStart(2, '0')}`;
-    const topRow = filter && i === 0 ? ' class="hi-score-row"' : '';
-    return filter
-      ? `<tr${topRow}><td>${dateStr}</td><td>${h.difficulty || '—'}</td><td>${h.score}%</td><td>${time}</td></tr>`
-      : `<tr><td>${dateStr}</td><td>${h.cat}</td><td>${h.mode}${h.difficulty && h.difficulty !== '—' ? ' (' + h.difficulty + ')' : ''}</td><td>${h.score}%</td><td>${time}</td></tr>`;
-  }).join('');
-  const headerCols = filter
-    ? `<th>Date</th><th>Difficulty</th><th>Score</th><th>Time</th>`
-    : `<th>Date</th><th>Category</th><th>Mode</th><th>Score</th><th>Time</th>`;
-  // The full History view gets the aggregate tiles (Attempts/Avg/Best);
-  // the score screen's filtered preview skips them entirely — with the
-  // list already scoped to one category+mode, the raw rows below say
-  // more than a summary would, and "Attempts"/"Avg Score" here would
-  // just restate what's visible in a glance down the table.
-  let summary = '';
-  if (!filter) {
-    const avgScore = Math.round(entries.reduce((s, h) => s + h.score, 0) / totalAttempts);
-    summary = `
-      <div class="hist-summary">
-        <div><span>${totalAttempts}</span><small>Attempts</small></div>
-        <div><span>${avgScore}%</span><small>Avg Score</small></div>
-        <div><span>${bestOverall}%</span><small>Best Score</small></div>
-      </div>`;
-  }
-  return `
-    ${summary}
-    <table class="hist-table">
-      <tr>${headerCols}</tr>
-      ${rows}
-    </table>
+    return `
+    <div class="lb-row${i === 0 ? ' hi-score-row' : ''}">
+      <span class="lb-score">${h.score}%</span>
+      <span class="lb-time">${time}</span>
+    </div>
   `;
-}
-
-let historyTagFilter = null;
-
-function allTags() {
-  const set = new Set();
-  DATA.forEach(g => g.verses.forEach(v => (v.tags || []).forEach(t => set.add(t))));
-  return [...set].sort();
-}
-
-// A history row is per-category-session, not per-verse, so "filter by
-// tag" means "show sessions from categories that contain a tagged
-// verse" — the closest a category-scoped log can get to verse-level
-// tags. Currently a no-op in practice (every verse ships with an
-// empty tags[] — real tag values weren't fabricated), but the wiring
-// is real and activates the moment tags get populated.
-function categoriesWithTag(tag) {
-  return DATA.filter(g => g.verses.some(v => (v.tags || []).includes(tag))).map(g => g.cat);
+  }).join('');
 }
 
 function openAbout() { showView('view-about'); }
-
-function openHistory() {
-  const tags = allTags();
-  const tagRow = document.getElementById('historyTagRow');
-  if (tags.length) {
-    tagRow.style.display = 'flex';
-    const chips = tags.map(t => ({ label: t, tag: t })).concat([{ label: 'All', tag: '' }]);
-    tagRow.innerHTML = chips.map(c => `<div class="pill${(historyTagFilter || '') === c.tag ? ' active' : ''}">${c.label}</div>`).join('');
-    tagRow.querySelectorAll('.pill').forEach((el, i) => {
-      el.onclick = () => { historyTagFilter = chips[i].tag || null; openHistory(); };
-    });
-  } else {
-    tagRow.style.display = 'none';
-  }
-  const catFilter = historyTagFilter ? categoriesWithTag(historyTagFilter) : null;
-  document.getElementById('historyBody').innerHTML = historyMarkup(60, null, catFilter);
-  showView('view-history');
-}
 
 // The markup uses inline onclick="" handlers (kept as-is from the
 // original single-file version — rewiring to addEventListener isn't
@@ -911,9 +900,9 @@ function openHistory() {
 // implicitly global, so the ones referenced from index.html's
 // onclick attributes must be attached to window explicitly.
 Object.assign(window, {
-  openHistory, goHome, showView, replaySession, toggleReview,
+  goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
-  checkWeakLink, checkChainBuild, openAbout
+  checkWeakLink, checkChainBuild, openAbout, beginReviewSession
 });
 
 loadProgress().then(loadHistory);

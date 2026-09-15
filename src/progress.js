@@ -21,8 +21,7 @@ function defaultEntry() {
     lastReviewed: null,
     reps: 0,
     lapses: 0,
-    wordMisses: {},
-    memoryHook: { note: '', imageUrl: '' }
+    wordMisses: {}
   };
 }
 
@@ -104,8 +103,12 @@ export function recordRecall(ref, score, depth) {
 
     if (e.stage === 'new' || e.stage === 'recognized') e.stage = 'cued';
     if (depth === 'free' && e.stage === 'cued') e.stage = 'free';
-    if (e.reps >= 5 && e.interval >= 30) e.stage = 'mastered';
-    if (e.interval >= 90) e.stage = 'maintenance';
+    // Mastered (and maintenance beyond it) must be earned by proven
+    // free recall, not just enough cued-mode reps piling up interval —
+    // otherwise the badge would claim you can produce a verse cold
+    // when you've only ever recalled it with cues still showing.
+    if (e.stage === 'free' && e.reps >= 5 && e.interval >= 30) e.stage = 'mastered';
+    if (e.stage === 'mastered' && e.interval >= 90) e.stage = 'maintenance';
   }
 
   const due = new Date();
@@ -136,12 +139,6 @@ export function resolveWordMiss(ref, word) {
     if (e.wordMisses[word] <= 0) delete e.wordMisses[word];
     saveProgress();
   }
-}
-
-export function setMemoryHook(ref, hook) {
-  const e = entryFor(ref);
-  e.memoryHook = { note: hook.note || '', imageUrl: hook.imageUrl || '' };
-  saveProgress();
 }
 
 // Suggested mode for wherever a verse currently sits in the
