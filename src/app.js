@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, suggestedModeForStage, PASS_THRESHOLD } from './progress.js';
 import { chunkVerse } from './chunking.js';
 
 document.getElementById('h1IconLeft').innerHTML = ANCHOR_ICON;
@@ -232,6 +232,21 @@ function resolveReviewItem(item) {
   return { verse: v, mode: item.suggested.mode, difficulty, cat: item.cat };
 }
 
+// A failed cued/free attempt just recorded fresh word-misses for this
+// verse (recordWordMisses runs on every failure) — jump straight into
+// drilling exactly those words instead of "Play Again" replaying the
+// whole mode from scratch on every verse in the session.
+function drillNow(ref) {
+  const group = DATA.find(g => g.verses.some(v => v.ref === ref));
+  const v = group.verses.find(x => x.ref === ref);
+  state.cat = group.cat;
+  state.mode = 'weaklink';
+  state.difficulty = null;
+  state.stepConfigs = undefined;
+  state.isReviewSession = false;
+  beginSession([v]);
+}
+
 function startReviewItem(item) {
   const resolved = resolveReviewItem(item);
   state.cat = resolved.cat;
@@ -459,7 +474,7 @@ function checkFade() {
   });
   const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
   const v = state.sessionVerses[state.stepIndex];
-  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct` });
+  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} blanks correct`, depth: 'cued' });
   recordRecall(v.ref, pct, 'cued');
   recordWordMisses(v.ref, missed);
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
@@ -512,7 +527,7 @@ function checkWeakLink() {
     if (ok) correct++;
   });
   const pct = inputs.length ? Math.round((correct / inputs.length) * 100) : 100;
-  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} weak words fixed` });
+  state.results.push({ ref: v.ref, score: pct, detail: `${correct}/${inputs.length} weak words fixed`, depth: 'cued' });
   recordRecall(v.ref, pct, 'cued');
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
@@ -584,7 +599,7 @@ function checkType() {
     <div class="score-line">${pct}% word match</div>
     <div class="diff-line">${diffHtml}</div>
   `;
-  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct` });
+  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct`, depth: 'free' });
   recordRecall(v.ref, pct, 'free');
   recordWordMisses(v.ref, missed);
   btn.dataset.checked = '1';
@@ -650,7 +665,7 @@ function checkChainBuild() {
     // The final link is the whole verse, recalled cumulatively from a
     // bare textarea — a real free-recall event, same standing as By
     // Heart for spaced-repetition purposes.
-    state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct (full verse)` });
+    state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct (full verse)`, depth: 'free' });
     recordRecall(v.ref, pct, 'free');
     recordWordMisses(v.ref, missed);
   }
@@ -736,7 +751,7 @@ function checkReverse(btn, correctRef) {
   btn.classList.add(tier.cls);
   recordRecognition(correctRef);
   const detail = tier.score === 100 ? 'Picked the right reference' : `Picked the right reference after ${reverseWrongCount + 1} tries`;
-  state.results.push({ ref: correctRef, score: tier.score, detail });
+  state.results.push({ ref: correctRef, score: tier.score, detail, depth: 'recognition' });
   document.getElementById('rateRow').style.display = 'flex';
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="nextStep()">Next</button>`;
 }
@@ -869,12 +884,28 @@ function showScoreScreen(score, timeSec, results, extraStats) {
   if (results && results.length) {
     reviewBtn.style.display = 'block';
     reviewList.style.display = 'none';
-    reviewList.innerHTML = results.map(r => `
-      <div class="review-item">
+    // Recognition-mode results (Dead Reckoning) have no mastery-stage
+    // threshold to be judged against — only recall-depth results
+    // (cued/free) get a pass/fail verdict, since PASS_THRESHOLD is
+    // what recordRecall actually gates stage advancement on.
+    reviewList.innerHTML = results.map(r => {
+      const graded = r.depth && r.depth !== 'recognition';
+      const pass = graded && r.score >= PASS_THRESHOLD;
+      const verdictClass = graded ? (pass ? ' pass' : ' fail') : '';
+      const verdictLabel = graded ? `<span class="review-verdict">${pass ? 'Locked in' : 'Not yet'}</span>` : '';
+      const drillBtn = graded && !pass ? `<button class="review-drill-btn" data-ref="${r.ref.replace(/"/g, '&quot;')}">Drill these words</button>` : '';
+      return `
+      <div class="review-item${verdictClass}">
         <div class="review-ref">${r.ref}<span class="review-pct">${r.score}%</span></div>
         <div class="review-detail">${r.detail}</div>
+        ${verdictLabel}
+        ${drillBtn}
       </div>
-    `).join('');
+    `;
+    }).join('');
+    reviewList.querySelectorAll('.review-drill-btn').forEach(btn => {
+      btn.onclick = () => drillNow(btn.dataset.ref);
+    });
   } else {
     reviewBtn.style.display = 'none';
     reviewList.style.display = 'none';

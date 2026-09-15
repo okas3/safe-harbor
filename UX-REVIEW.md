@@ -131,7 +131,15 @@ Status of the above, updated as work lands:
       caught, and an inserted extra word is now correctly penalized too
       (denominator counts `max(actual.length, typed.length)`, not just
       the verse's own word count).
-- [ ] 2. Per-verse pass/fail annotation on the score screen's review list
+- [x] 2. Per-verse pass/fail annotation on the score screen's review list —
+      each recall-depth result (cued/free) now shows "Locked in" or "Not
+      yet" against `PASS_THRESHOLD` (now exported from `progress.js`),
+      with a left-border accent (sea/rust). Recognition-depth results
+      (Dead Reckoning) correctly show no verdict — no mastery threshold
+      applies to recognition. A failed verse also gets a "Drill these
+      words" button (`drillNow()`) that jumps straight into Weak Link
+      scoped to just that verse, since the failure just populated
+      `wordMisses` for it.
 - [ ] 3. Suggested-mode-as-primary-action on the home screen
 - [ ] 4. Streak tracking + Review promoted to primary CTA when due
 - [ ] 5. Dual-coding v2 — not started, pending explicit request

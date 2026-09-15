@@ -10,7 +10,7 @@
 // recall modes (graded via checkFade/checkType) call recordRecall().
 
 const PROGRESS_KEY = 'scripture-progress-v1';
-const PASS_THRESHOLD = 90;
+export const PASS_THRESHOLD = 90;
 
 function defaultEntry() {
   return {

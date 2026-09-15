@@ -267,6 +267,23 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 .review-ref { font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 11px; color: var(--brass); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
 .review-pct { float: right; color: var(--ink-dim); font-family: 'JetBrains Mono', monospace; }
 .review-detail { font-size: 12px; color: var(--ink-dim); }
+/* Pass/fail verdict against the same PASS_THRESHOLD that actually
+   gates mastery-stage advancement — only shown for recall-depth
+   results (recognition modes have no such threshold to fail). */
+.review-item.pass { border-left: 2px solid var(--sea); }
+.review-item.fail { border-left: 2px solid var(--rust); }
+.review-verdict {
+  display: inline-block; margin-top: 8px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.6px; font-family: 'JetBrains Mono', monospace;
+}
+.review-item.pass .review-verdict { color: var(--sea); }
+.review-item.fail .review-verdict { color: var(--rust); }
+.review-drill-btn {
+  display: block; margin-top: 8px; background: none; border: 1px solid var(--rust-dim); color: var(--rust);
+  padding: 6px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: 'Instrument Sans', -apple-system, sans-serif;
+  transition: border-color 0.15s;
+}
+.review-drill-btn:hover { border-color: var(--rust); }
 
 .match-grid { display: flex; gap: 14px; }
 .match-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
