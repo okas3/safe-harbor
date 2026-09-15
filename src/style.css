@@ -331,6 +331,11 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
   text-transform: uppercase; letter-spacing: 1px; margin: 26px 0 8px; font-weight: 600;
 }
 .about-content .about-footnote { color: var(--ink-faint); font-style: italic; font-size: 13.5px; margin-top: 8px; }
+/* A quiet postscript, not another numbered point in the method — the
+   icon symbolism is a design note, not pedagogy, and reads that way:
+   set off by a divider, smaller and dimmer than the sections above. */
+.about-aside { border-top: 1px solid var(--border); margin-top: 22px; padding-top: 18px; }
+.about-aside p { font-size: 13px; line-height: 1.65; color: var(--ink-faint); margin: 0; }
 
 .app-footer { text-align: center; margin-top: 4px; }
 .app-footer a {
