@@ -87,7 +87,28 @@ h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .cat-header-icon svg { width: 100%; height: 100%; display: block; }
 .cat-header-name { font-size: 20px; font-weight: 600; }
 
-.verse-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+/* Fixed height, scrolls internally — verse length varies a lot by
+   category (1John 4:8 vs. Psalm 103:10-12), and letting that resize
+   the page pushes Start Quiz/Mode/Categories around depending on
+   which category you're on. This keeps them in a stable position
+   without reordering content above the verses themselves. */
+.verse-list-wrap { position: relative; margin-bottom: 22px; }
+.verse-list {
+  display: flex; flex-direction: column; gap: 10px;
+  height: min(58vh, 480px); overflow-y: auto; padding-right: 6px;
+}
+.verse-list::-webkit-scrollbar { width: 6px; }
+.verse-list::-webkit-scrollbar-track { background: transparent; }
+.verse-list::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 3px; }
+/* Fade hint at the bottom edge -- a card cut off mid-sentence with no
+   cue reads as broken, not as "scroll for more." Sits on the wrapper,
+   not inside the scrolling box, so it stays pinned to the visible
+   edge instead of scrolling away with the content. */
+.verse-list-wrap::after {
+  content: ''; position: absolute; left: 0; right: 6px; bottom: 0; height: 32px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
 .verse-card {
   background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
   border-radius: 4px; padding: 14px 16px;
