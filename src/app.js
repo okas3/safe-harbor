@@ -1,11 +1,19 @@
 import './style.css';
 import { DATA } from './verses.js';
-import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS } from './difficulties.js';
+import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS, SCENARIO_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getNewVerses, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getDueTodayQueue, loadNewCardState, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
 import { chunkVerse } from './chunking.js';
+import { SCENARIOS, SCENARIO_MATCH_MIN } from './scenarios.js';
 
 document.getElementById('h1Mark').innerHTML = ANCHOR_ICON;
+
+// Local-storage-only app, no API to keep fresh — a cache-first
+// service worker is enough to make it open with no connection at all
+// once it's been visited once and installed to a home screen.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
 
 const HISTORY_KEY = 'scripture-history-v3';
 
@@ -18,6 +26,11 @@ const MODES = [
   { id: 'chainbuild', label: 'Anchor Chain Build', hint: 'Build It Phrase by Phrase', desc: 'Add one phrase at a time, reciting everything built so far before the next link goes on.' },
   { id: 'type', label: 'By Heart', hint: 'Type from Memory', desc: 'Just the reference. Type the whole verse. Graded word by word.' }
 ];
+
+// Situations aren't scoped to one category the way every mode above
+// is, so they don't live in the category-picker's mode-select at all
+// — this is a separate label just for history/title display.
+const SCENARIO_MODE_LABEL = 'Compass Bearing';
 const STAGE_LABELS = { new: 'New', recognized: 'Recognized', cued: 'Cued', free: 'Free Recall', mastered: 'Mastered', maintenance: 'Maintained' };
 const STAGE_RANK = { new: 0, recognized: 1, cued: 2, free: 3, mastered: 4, maintenance: 5 };
 
@@ -54,6 +67,24 @@ function updateVerseListFades() {
 }
 document.getElementById('verseList').addEventListener('scroll', updateVerseListFades);
 
+// Quiz check/submit via Enter. Blank-fill inputs are single-line, so
+// plain Enter is unambiguous. typeInput is a textarea where Enter's
+// native job is a newline (verses can span lines), so that one needs
+// Cmd/Ctrl+Enter instead of hijacking plain Enter.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const target = e.target;
+  if (target.classList && target.classList.contains('blank-input')) {
+    e.preventDefault();
+    if (state.mode === 'fade') checkFade();
+    else if (state.mode === 'weaklink') checkWeakLink();
+  } else if (target.id === 'typeInput' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    if (state.mode === 'chainbuild') checkChainBuild();
+    else checkType();
+  }
+});
+
 let history = [];
 let db = null;
 
@@ -80,9 +111,14 @@ async function loadHistory() {
   // Apply the real suggestion for the default category now that
   // progress data is loaded — the initial `state` literal's mode is
   // just a bootstrap placeholder, not an actual recommendation, so
-  // the suggested-mode badge would otherwise be wrong until the user
-  // clicked a category pill at least once.
+  // the suggested-mode badge would otherwise be wrong the first time
+  // "Practice Ahead" is opened.
   selectCategory(state.cat);
+  // The due-today queue (schedule-driven: what's decaying, plus
+  // today's fresh-verse batch) is the primary landing screen now —
+  // category browsing above is just prepared in the background so
+  // it's not stale whenever "Practice Ahead" is actually opened.
+  openReview();
 }
 async function saveHistory() {
   try {
@@ -94,10 +130,19 @@ async function saveHistory() {
   } catch (e) {}
 }
 
-function bestScoreFor(cat) {
-  const entries = history.filter(h => h.cat === cat);
-  if (!entries.length) return null;
-  return Math.max(...entries.map(h => h.score));
+// Category completion: the share of its verses that have actually
+// reached mastered/maintenance (the same bar the Review stats strip
+// uses for its "Mastered" count), not a single best-attempt score —
+// one lucky round shouldn't read as "you've got this category down".
+// Untouched categories show no badge at all rather than a bare 0%.
+function masteryPctFor(cat) {
+  const group = DATA.find(g => g.cat === cat);
+  if (!group.verses.some(v => getProgress(v.ref).stage !== 'new')) return null;
+  const mastered = group.verses.filter(v => {
+    const s = getProgress(v.ref).stage;
+    return s === 'mastered' || s === 'maintenance';
+  }).length;
+  return Math.round((mastered / group.verses.length) * 100);
 }
 function attemptsFor(cat) {
   return history.filter(h => h.cat === cat).length;
@@ -173,28 +218,26 @@ function renderHome() {
   const catPills = document.getElementById('catPills');
   catPills.innerHTML = '';
   DATA.forEach(g => {
-    const best = bestScoreFor(g.cat);
+    const pct = masteryPctFor(g.cat);
     const div = document.createElement('div');
     div.className = 'cat-pill' + (state.cat === g.cat ? ' active' : '');
     div.innerHTML = `
       <span class="cat-pill-icon">${CATEGORY_ICONS[g.cat] || ''}</span>
       <span class="cat-pill-label">${g.cat}</span>
-      ${best === null ? '' : `<span class="cat-pill-badge">${best}%</span>`}
+      ${pct === null ? '' : `<span class="cat-pill-badge">${pct}%</span>`}
     `;
     div.onclick = () => selectCategory(g.cat);
     catPills.appendChild(div);
   });
 
-  // Every never-practiced verse counts as "due" in SRS terms (that's
-  // correct — new cards are always due), but showing that as an urgent
-  // nudge before a single session has happened is just noise, not
-  // signal (same reasoning openReview()'s stats already apply). Only
-  // promote Review once there's real engagement history to make the
-  // due count meaningful.
+  // This is the way back to the due-today home from the secondary
+  // "Practice Ahead" screen — every never-practiced verse counts as
+  // "due" in SRS terms, but surfacing that as an urgent count here
+  // (before any real engagement history) would just be noise.
   const reviewBtn = document.getElementById('reviewHomeBtn');
   const due = history.length ? getDueVerses(DATA).length : 0;
   reviewBtn.classList.toggle('primary', due > 0);
-  reviewBtn.textContent = due > 0 ? `Review (${due} Due)` : 'Review';
+  reviewBtn.textContent = due > 0 ? `Back to Today (${due} Due)` : 'Back to Today';
 
   const streak = getStreak();
   const streakEl = document.getElementById('streakText');
@@ -250,36 +293,33 @@ function updateSuggestedBadge() {
 
 function startPractice() { state.isReviewSession = false; state.stepConfigs = undefined; beginSession(); }
 
-// Retention-health strip: what's actually due, what's holding, what's
-// slipping — shown when you actually open Review, not leading the
-// home screen (a fresh account with zero practice history would
-// otherwise open to a meaningless "28 Due Today" before you've done
-// anything at all).
+// The due-today home: schedule-driven reinforcement (what's actually
+// decaying) plus today's fresh-verse batch, merged into one queue —
+// this is the primary landing screen, not a secondary "Review" you
+// have to navigate to. Manually picking a category ("Practice Ahead")
+// is the secondary path now.
 function openReview() {
-  // "Due" here means genuinely fading and needing reinforcement — a
-  // verse that's never been practiced isn't due, it's just unstarted,
-  // and Review's queue/count should only ever be about reinforcement.
-  // See getNewVerses() for the "never started" count.
-  const due = getDueVerses(DATA);
-  const newCount = getNewVerses(DATA).length;
+  const queue = getDueTodayQueue(DATA);
+  const dueCount = getDueVerses(DATA).length;
+  const newCount = getTodaysBatchCount(queue);
   let mastered = 0;
   DATA.forEach(g => g.verses.forEach(v => {
     const e = getProgress(v.ref);
     if (e.stage === 'mastered' || e.stage === 'maintenance') mastered++;
   }));
-  const atRisk = due.filter(d => (d.overdueDays ?? 0) > 3);
+  const atRisk = queue.filter(d => (d.overdueDays ?? 0) > 3);
   document.getElementById('reviewStatsInline').innerHTML = `
-    <div class="review-stat"><span>${due.length}</span><small>Due Today</small></div>
+    <div class="review-stat"><span>${dueCount}</span><small>Due Today</small></div>
     <div class="review-stat"><span>${newCount}</span><small>New</small></div>
     <div class="review-stat"><span>${mastered}</span><small>Mastered</small></div>
     <div class="review-stat${atRisk.length ? ' review-stat-risk' : ''}"><span>${atRisk.length}</span><small>At Risk</small></div>
   `;
-  document.getElementById('reviewStartRow').innerHTML = due.length
-    ? `<button class="btn primary wide" onclick="beginReviewSession()">Start Review (${due.length})</button>`
-    : `<div class="empty-hist">Nothing due for reinforcement.${newCount ? ` ${newCount} new verse${newCount === 1 ? '' : 's'} waiting. Practice a category to start them.` : ''}</div>`;
+  document.getElementById('reviewStartRow').innerHTML = queue.length
+    ? `<button class="btn primary wide" onclick="beginReviewSession()">Start Today's Session (${queue.length})</button>`
+    : `<div class="empty-hist">Nothing due, and no new verses left to introduce.</div>`;
   // At Risk verses (badly overdue) are the only ones worth calling out
   // individually — everything else in the queue is covered by the
-  // single Start Review flow above, not a row-per-verse list.
+  // single Start Session flow above, not a row-per-verse list.
   document.getElementById('dueList').innerHTML = atRisk.length ? atRisk.map((d, i) => `
     <div class="due-item" data-idx="${i}">
       <div class="due-item-main">
@@ -292,8 +332,14 @@ function openReview() {
   document.querySelectorAll('.due-item').forEach((el, i) => {
     el.onclick = () => startReviewItem(atRisk[i]);
   });
-  reviewQueue = due;
-  showStage('reviewArea', due.length ? `${due.length} Due for Review` : 'Review');
+  reviewQueue = queue;
+  showStage('reviewArea', queue.length ? `${queue.length} in Today's Session` : "Today's Session");
+}
+
+// getDueTodayQueue's "new" entries are today's introduced batch, not
+// the full unseen pool — distinct from getNewVerses()'s total count.
+function getTodaysBatchCount(queue) {
+  return queue.filter(d => d.stage === 'new').length;
 }
 
 function resolveReviewItem(item) {
@@ -348,22 +394,23 @@ function showView(id) {
 }
 function goHome() { renderHome(); showView('view-home'); cancelSession(); }
 
-// The home screen has one "stage" area that's either the idle verse
-// previews, or one of the three active-session UIs, never more than
-// one at once — swapping between them is a same-page content swap
-// (no showView/navigation), so the category header, mode picker, and
-// category switcher all stay in place while a session runs.
-const STAGES = ['verseList', 'reviewArea', 'practiceArea', 'matchArea', 'scoreArea'];
+// reviewArea (the due-today queue) is home now — the one stage with
+// no back button and no category/mode picker of its own.
+// verseList ("Practice Ahead," manually browsing a category) and the
+// three active-session UIs all have a way back to it.
+const STAGES = ['verseList', 'reviewArea', 'practiceArea', 'matchArea', 'scoreArea', 'scenarioArea'];
 function showStage(name, title) {
   STAGES.forEach(id => { document.getElementById(id).style.display = (id === name) ? '' : 'none'; });
-  const isIdle = name === 'verseList';
-  document.getElementById('stageBack').style.display = isIdle ? 'none' : 'flex';
-  document.getElementById('setupArea').style.display = isIdle ? '' : 'none';
+  const isHome = name === 'reviewArea';
+  document.getElementById('stageBack').style.display = isHome ? 'none' : 'flex';
+  document.getElementById('setupArea').style.display = (name === 'verseList') ? '' : 'none';
   // The review queue spans every category, so the single-category
   // header (correct for every other stage, including review-launched
   // single-verse sessions — startReviewItem() sets state.cat to that
   // verse's real category) would be stale/misleading here specifically.
-  document.getElementById('catHeader').style.display = (name === 'reviewArea') ? 'none' : '';
+  // Situations aren't scoped to one category either — same reasoning.
+  const scenarioScore = name === 'scoreArea' && state.mode === 'scenario';
+  document.getElementById('catHeader').style.display = (isHome || name === 'scenarioArea' || scenarioScore) ? 'none' : '';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
 
   // Live-counting timer, running only while a round is actually in
@@ -395,15 +442,35 @@ function stopTimer() {
 
 function cancelSession() {
   matchState = null;
+  scenarioState = null;
   state.stepConfigs = undefined;
-  // Returning to the idle home state should reflect whatever just
-  // happened in the session (due count, streak) — otherwise Review's
-  // promotion and the streak text only refresh on a category switch.
+  // 'scenario' isn't a real entry in MODES (Situations aren't
+  // category-scoped, so they were never a mode-select option) —
+  // renderHome() would crash looking it up there, so restore a real
+  // suggestion for the current category first.
+  if (state.mode === 'scenario') {
+    const sug = suggestionForCategory(state.cat);
+    state.mode = sug.mode;
+    const diffs = diffsForMode(sug.mode);
+    state.difficulty = diffs ? (diffs.find(d => d.id === sug.diffId) || diffs[0]) : null;
+  }
+  // Home is the due-today queue now, regardless of whether the
+  // session was launched from there or from "Practice Ahead" — one
+  // way back, so this doesn't need to branch on where it was entered
+  // from. renderHome() still refreshes the (now-hidden) category
+  // picker so it's not stale next time Practice Ahead is opened.
   renderHome();
-  showStage('verseList');
+  openReview();
+}
+
+// The manual, category-by-category path — secondary to the due-today
+// queue, reached only by deliberately opening it.
+function practiceAhead() {
+  showStage('verseList', '');
 }
 
 function modeLabel(m) {
+  if (m === 'scenario') return SCENARIO_MODE_LABEL;
   return MODES.find(x => x.id === m)?.label || m;
 }
 
@@ -640,24 +707,24 @@ function renderTypeArea(v, afterLetters) {
   if (!afterLetters) {
     card.innerHTML = `
       <div class="ref">${v.ref}</div>
-      <textarea id="typeInput" placeholder="Type the verse from memory..."></textarea>
+      <textarea id="typeInput" placeholder="Type the verse from memory..." autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
       <div id="typeResult"></div>
     `;
   } else {
     card.insertAdjacentHTML('beforeend', `
-      <textarea id="typeInput" placeholder="Type the full verse..." style="margin-top:14px;"></textarea>
+      <textarea id="typeInput" placeholder="Type the full verse..." style="margin-top:14px;" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
       <div id="typeResult"></div>
     `);
   }
   document.getElementById('rateRow').style.display = 'flex';
   document.getElementById('rateRow').innerHTML = `<button class="action-btn" onclick="checkType()">Check</button>`;
 }
-function checkType() {
-  const btn = document.getElementById('rateRow');
-  if (btn.dataset.checked === '1') { state.stepIndex++; showStep(); return; }
-  const v = state.sessionVerses[state.stepIndex];
-  const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
-  const actual = v.text.split(' ');
+// Shared by every bare-textarea free-recall check (By Heart, Chain
+// Build's final link, Situations' By Heart tier) — grades typed text
+// against a target string via the same word-diff engine.
+function gradeFreeRecall(actualText, typedText) {
+  const typed = typedText.trim().split(/\s+/).filter(Boolean);
+  const actual = actualText.split(' ');
   const matched = alignWords(actual, typed);
   let correctCount = 0;
   const missed = [];
@@ -666,16 +733,24 @@ function checkType() {
     missed.push(normWord(w));
     return `<span class="miss">${w}</span>`;
   }).join(' ');
-  // Denominator counts extra typed words too, not just the actual
-  // verse's word count — otherwise an inserted word that doesn't
+  // Denominator counts extra typed words too, not just the target
+  // text's word count — otherwise an inserted word that doesn't
   // displace any real word goes completely unpenalized, since every
   // actual word can still be found in order in the LCS alignment.
   const pct = Math.round((correctCount / Math.max(actual.length, typed.length)) * 100);
+  return { pct, diffHtml, missed, correctCount, actualLen: actual.length };
+}
+
+function checkType() {
+  const btn = document.getElementById('rateRow');
+  if (btn.dataset.checked === '1') { state.stepIndex++; showStep(); return; }
+  const v = state.sessionVerses[state.stepIndex];
+  const { pct, diffHtml, missed, correctCount, actualLen } = gradeFreeRecall(v.text, document.getElementById('typeInput').value);
   document.getElementById('typeResult').innerHTML = `
     <div class="score-line">${pct}% word match</div>
     <div class="diff-line">${diffHtml}</div>
   `;
-  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct`, depth: 'free' });
+  state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actualLen} words correct`, depth: 'free' });
   recordRecall(v.ref, pct, 'free');
   recordWordMisses(v.ref, missed);
   btn.dataset.checked = '1';
@@ -697,7 +772,7 @@ function renderChainBuild(v) {
     ${settled ? `<div class="verse-text chain-settled">${settled}</div>` : ''}
     <div class="letters-line">${initialsCue(nextPhrase, 1)}</div>
     <div class="tap-hint">${settled ? 'Type everything so far, including the new phrase:' : 'Type the first phrase:'}</div>
-    <textarea id="typeInput" placeholder="Type it..."></textarea>
+    <textarea id="typeInput" placeholder="Type it..." autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
     <div id="typeResult"></div>
   `;
   document.getElementById('rateRow').style.display = 'flex';
@@ -717,21 +792,7 @@ function checkChainBuild() {
   }
   const v = state.sessionVerses[state.stepIndex];
   const targetText = state.chunks.slice(0, state.chunkIndex + 1).join(' ');
-  const typed = document.getElementById('typeInput').value.trim().split(/\s+/).filter(Boolean);
-  const actual = targetText.split(' ');
-  const matched = alignWords(actual, typed);
-  let correctCount = 0;
-  const missed = [];
-  const diffHtml = actual.map((w, i) => {
-    if (matched[i]) { correctCount++; return `<span class="ok">${w}</span>`; }
-    missed.push(normWord(w));
-    return `<span class="miss">${w}</span>`;
-  }).join(' ');
-  // Denominator counts extra typed words too, not just the actual
-  // verse's word count — otherwise an inserted word that doesn't
-  // displace any real word goes completely unpenalized, since every
-  // actual word can still be found in order in the LCS alignment.
-  const pct = Math.round((correctCount / Math.max(actual.length, typed.length)) * 100);
+  const { pct, diffHtml, missed, correctCount, actualLen } = gradeFreeRecall(targetText, document.getElementById('typeInput').value);
   document.getElementById('typeResult').innerHTML = `
     <div class="score-line">${pct}% word match</div>
     <div class="diff-line">${diffHtml}</div>
@@ -741,7 +802,7 @@ function checkChainBuild() {
     // The final link is the whole verse, recalled cumulatively from a
     // bare textarea — a real free-recall event, same standing as By
     // Heart for spaced-repetition purposes.
-    state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actual.length} words correct (full verse)`, depth: 'free' });
+    state.results.push({ ref: v.ref, score: pct, detail: `${correctCount}/${actualLen} words correct (full verse)`, depth: 'free' });
     recordRecall(v.ref, pct, 'free');
     recordWordMisses(v.ref, missed);
   }
@@ -932,6 +993,206 @@ function finishMatch() {
   ]);
 }
 
+// Situations aren't scoped to one category (a situation's connection
+// can point anywhere in the verse bank), so this is a separate entry
+// point rather than another item in the category-picker's mode
+// select — see suggestScenarioTier()/showStage's isHome handling.
+let scenarioState = null;
+function beginScenario() {
+  scenarioState = { tier: 'preview', idx: 0, results: [], startTime: Date.now(), match: null };
+  renderScenarioTabs();
+  renderScenarioTier();
+  showStage('scenarioArea', 'Situations');
+}
+function renderScenarioTabs() {
+  const matchLocked = SCENARIOS.length < SCENARIO_MATCH_MIN;
+  document.getElementById('scenarioTabs').innerHTML = SCENARIO_DIFFS.map(d => {
+    const disabled = d.id === 'match' && matchLocked;
+    return `<button class="scenario-tab${scenarioState.tier === d.id ? ' active' : ''}"${disabled ? ' disabled title="Add a few more situations to unlock Match"' : ` onclick="switchScenarioTier('${d.id}')"`}>${d.short}</button>`;
+  }).join('');
+}
+function switchScenarioTier(tier) {
+  scenarioState.tier = tier;
+  scenarioState.idx = 0;
+  scenarioState.results = [];
+  scenarioState.match = null;
+  renderScenarioTabs();
+  renderScenarioTier();
+}
+function renderScenarioTier() {
+  if (scenarioState.tier === 'preview') renderScenarioPreview();
+  else if (scenarioState.tier === 'match') renderScenarioMatch();
+  else renderScenarioByHeart();
+}
+
+// Pure exposure — every situation, its connection(s), the scene, and
+// why the connection is analogical rather than literal, all at once.
+// No grading, nothing recorded. The "see the whole labeled map first"
+// step, same reasoning as any preview-before-quiz pattern.
+function renderScenarioPreview() {
+  document.getElementById('scenarioBody').innerHTML = SCENARIOS.map(s => `
+    <div class="scenario-card">
+      <div class="scenario-situation">${s.situation}</div>
+      ${s.connections.map(c => `
+        <div class="scenario-connection">
+          <div class="scenario-ref">${c.ref}</div>
+          <div class="scenario-scene">${c.scene}</div>
+          <div class="scenario-why">${c.whyAnalogical}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function renderScenarioMatch() {
+  const body = document.getElementById('scenarioBody');
+  if (SCENARIOS.length < SCENARIO_MATCH_MIN) {
+    body.innerHTML = `<div class="empty-hist">Add a few more situations to unlock Match — needs at least ${SCENARIO_MATCH_MIN}, there ${SCENARIOS.length === 1 ? 'is' : 'are'} currently ${SCENARIOS.length}.</div>`;
+    return;
+  }
+  if (!scenarioState.match) {
+    const situations = SCENARIOS.map((s, i) => ({
+      idx: i,
+      snippet: s.situation.length > 140 ? s.situation.slice(0, 140) + '…' : s.situation
+    })).sort(() => Math.random() - 0.5);
+    // One tile per situation, using its first connection as the match
+    // target — a situation with more than one valid connection still
+    // counts a tap correct against any of them (see selectScenarioRef).
+    const refs = SCENARIOS.map((s, i) => ({ idx: i, ref: s.connections[0].ref })).sort(() => Math.random() - 0.5);
+    scenarioState.match = { situations, refs, matchedCount: 0, total: SCENARIOS.length, mistakes: 0, attempts: {}, selectedIdx: null, startTime: Date.now() };
+  }
+  const m = scenarioState.match;
+  body.innerHTML = `
+    <div class="match-stats">${m.matchedCount}/${m.total} paired · ${m.mistakes} miss${m.mistakes === 1 ? '' : 'es'}</div>
+    <div class="match-grid">
+      <div class="match-col" id="scenarioSituationCol"></div>
+      <div class="match-col" id="scenarioRefCol"></div>
+    </div>
+  `;
+  const sitCol = document.getElementById('scenarioSituationCol');
+  const refCol = document.getElementById('scenarioRefCol');
+  m.situations.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = s.snippet;
+    if (s.matched) div.classList.add('matched', tierFor(m.attempts[s.idx]).cls);
+    if (m.selectedIdx === s.idx && !s.matched) div.classList.add('selected');
+    if (!s.matched) div.onclick = () => selectScenarioSituation(s.idx);
+    sitCol.appendChild(div);
+  });
+  m.refs.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'match-chip';
+    div.textContent = r.ref;
+    if (r.matched) div.classList.add('matched', tierFor(m.attempts[r.idx]).cls);
+    // After the 3rd wrong guess on a situation, blink its correct
+    // pairing rather than leaving someone stuck guessing forever —
+    // a fresh element each render, so the animation replays on every
+    // subsequent miss too, not just the one that crossed the threshold.
+    else if ((m.attempts[r.idx] || 0) >= 3) div.classList.add('hint-blink');
+    if (!r.matched) div.onclick = () => selectScenarioRef(r.idx, r.ref);
+    refCol.appendChild(div);
+  });
+}
+function selectScenarioSituation(idx) {
+  scenarioState.match.selectedIdx = idx;
+  renderScenarioMatch();
+}
+function selectScenarioRef(refIdx, ref) {
+  const m = scenarioState.match;
+  if (m.selectedIdx == null) return;
+  const chosenIdx = m.selectedIdx;
+  // Correct against ANY of the selected situation's connections, not
+  // just its first — a situation can have more than one valid
+  // scriptural resonance.
+  const isCorrect = SCENARIOS[chosenIdx].connections.some(c => c.ref === ref);
+  if (isCorrect) {
+    m.situations.find(s => s.idx === chosenIdx).matched = true;
+    m.refs.find(r => r.idx === refIdx).matched = true;
+    m.matchedCount++;
+    m.selectedIdx = null;
+    renderScenarioMatch();
+    if (m.matchedCount === m.total) finishScenarioMatch();
+  } else {
+    m.mistakes++;
+    m.attempts[chosenIdx] = (m.attempts[chosenIdx] || 0) + 1;
+    m.selectedIdx = null;
+    renderScenarioMatch();
+  }
+}
+function finishScenarioMatch() {
+  const m = scenarioState.match;
+  const timeSec = Math.round((Date.now() - m.startTime) / 1000);
+  const score = Math.round((m.total / (m.total + m.mistakes)) * 100);
+  // Matching is recognition, not recall — same standing as Safe
+  // Harbor's finishMatch(), never touches the SM-2 schedule.
+  SCENARIOS.forEach(s => recordRecognition(s.connections[0].ref));
+  logAttempt('Situations', 'scenario', SCENARIO_DIFFS[1].name, score, timeSec);
+  recordActivity();
+  scenarioState.match = null;
+  // showScoreScreen keys its title/leaderboard off state.mode — flag
+  // this as a scenario finish so it doesn't show a stale category's
+  // leaderboard. cancelSession() resets this back to something valid
+  // for the mode-select dropdown once the user navigates away.
+  state.mode = 'scenario'; state.difficulty = null; state.stepConfigs = undefined; state.isReviewSession = false;
+  showScoreScreen(score, timeSec, [], [
+    { label: 'Pairs', value: m.total },
+    { label: 'Misses', value: m.mistakes }
+  ]);
+}
+
+// The deliberately hard, opt-in tier — a situation with no options,
+// free recall of the actual verse text. Reuses checkType's grading
+// helper since the mechanics are identical with a different cue.
+function renderScenarioByHeart() {
+  const s = SCENARIOS[scenarioState.idx];
+  document.getElementById('scenarioBody').innerHTML = `
+    <div class="progress-line">Situation ${scenarioState.idx + 1} of ${SCENARIOS.length}</div>
+    <div class="scenario-situation-prompt">${s.situation}</div>
+    <textarea id="scenarioInput" placeholder="What does the scripture say?" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+    <div id="scenarioResult"></div>
+    <div class="rate-row" id="scenarioRateRow"><button class="action-btn" onclick="checkScenarioByHeart()">Check</button></div>
+  `;
+}
+function checkScenarioByHeart() {
+  const btn = document.getElementById('scenarioRateRow');
+  if (btn.dataset.checked === '1') {
+    btn.dataset.checked = '';
+    scenarioState.idx++;
+    if (scenarioState.idx >= SCENARIOS.length) { finishScenarioByHeart(); return; }
+    renderScenarioByHeart();
+    return;
+  }
+  const s = SCENARIOS[scenarioState.idx];
+  const primary = s.connections[0];
+  const group = DATA.find(g => g.verses.some(v => v.ref === primary.ref));
+  const v = group.verses.find(x => x.ref === primary.ref);
+  const { pct, diffHtml, missed } = gradeFreeRecall(v.text, document.getElementById('scenarioInput').value);
+  document.getElementById('scenarioResult').innerHTML = `
+    <div class="score-line">${pct}% word match</div>
+    <div class="diff-line">${diffHtml}</div>
+    <div class="scenario-connection">
+      <div class="scenario-ref">${primary.ref}</div>
+      <div class="scenario-scene">${primary.scene}</div>
+      <div class="scenario-why">${primary.whyAnalogical}</div>
+    </div>
+  `;
+  scenarioState.results.push({ ref: primary.ref, score: pct, detail: `${pct}% word match`, depth: 'free' });
+  recordRecall(primary.ref, pct, 'free');
+  recordWordMisses(primary.ref, missed);
+  logAttempt(group.cat, 'scenario', SCENARIO_DIFFS[2].name, pct, Math.round((Date.now() - scenarioState.startTime) / 1000));
+  recordActivity();
+  btn.dataset.checked = '1';
+  const isLast = scenarioState.idx + 1 >= SCENARIOS.length;
+  btn.innerHTML = `<button class="action-btn" onclick="checkScenarioByHeart()">${isLast ? 'Finish' : 'Next Situation'}</button>`;
+}
+function finishScenarioByHeart() {
+  const avg = Math.round(scenarioState.results.reduce((sum, r) => sum + r.score, 0) / scenarioState.results.length);
+  const timeSec = Math.round((Date.now() - scenarioState.startTime) / 1000);
+  state.mode = 'scenario'; state.difficulty = null; state.stepConfigs = undefined; state.isReviewSession = false;
+  showScoreScreen(avg, timeSec, scenarioState.results, [{ label: 'Situations', value: scenarioState.results.length }]);
+}
+
 function finishSession() {
   const timeSec = Math.round((Date.now() - state.startTime) / 1000);
   const avg = Math.round(state.results.reduce((s, r) => s + r.score, 0) / state.results.length);
@@ -990,9 +1251,12 @@ function showScoreScreen(score, timeSec, results, extraStats) {
   }
   const scoreHistory = document.getElementById('scoreHistoryBody');
   const scoreHistoryLabel = scoreHistory.previousElementSibling;
-  if (state.stepConfigs) {
-    // Mixed-mode, mixed-category review session — no single cat/mode
-    // leaderboard applies here.
+  // Situations aren't scoped to one category/mode/difficulty either
+  // (and never touch state.cat/mode/difficulty at all), so they need
+  // the same "no single leaderboard applies" treatment a mixed-mode
+  // review session gets.
+  const crossCategory = state.stepConfigs || state.mode === 'scenario';
+  if (crossCategory) {
     scoreHistory.innerHTML = '';
     if (scoreHistoryLabel) scoreHistoryLabel.style.display = 'none';
   } else {
@@ -1002,9 +1266,11 @@ function showScoreScreen(score, timeSec, results, extraStats) {
   document.getElementById('nextDueBtn').style.display = state.isReviewSession ? 'block' : 'none';
   // A flowing review session's queue isn't a single cat/mode/difficulty
   // config replaySession() can reconstruct — "Next Due Verse" is
-  // already the sensible restart action here.
-  document.getElementById('playAgainBtn').style.display = state.stepConfigs ? 'none' : 'block';
-  const title = state.stepConfigs ? 'Review' : roundTitle(state.mode, state.difficulty);
+  // already the sensible restart action here. Same for Situations —
+  // replaySession() would just re-run whatever category session ran
+  // before this, which isn't what "Play Again" should mean here.
+  document.getElementById('playAgainBtn').style.display = crossCategory ? 'none' : 'block';
+  const title = state.stepConfigs ? 'Review' : state.mode === 'scenario' ? 'Situations' : roundTitle(state.mode, state.difficulty);
   showStage('scoreArea', title);
 }
 function toggleReview() {
@@ -1046,7 +1312,12 @@ const ICON_MEANINGS = {
   "God's Power": { icon: 'Lightning', meaning: '' },
   "Power of Prayer": { icon: "Ship's wheel", meaning: 'hands actually on the helm' },
   "Power of Faith": { icon: 'Sail', meaning: 'substance made visible only by what it moves' },
-  "Renewal of the Mind": { icon: 'Sunrise', meaning: '' }
+  "Renewal of the Mind": { icon: 'Sunrise', meaning: '' },
+  "Bearing One Another Up": { icon: 'Braced crossbar', meaning: "support, not rescue — someone else's job is holding you steady, not fighting your battle for you" },
+  "Your Own Calling": { icon: 'Heading arrow', meaning: "your own next step, not a comparison to someone else's path" },
+  "Being Seen": { icon: 'Open eye', meaning: 'seen by God even in the place you feel most overlooked' },
+  "God's Provision": { icon: 'Jar', meaning: 'enough for today, again tomorrow — not a lump sum up front' },
+  "Forgiveness": { icon: 'Released hands', meaning: "holding both a real wrong and a refusal to let it be the last word" }
 };
 
 function renderIconGrid() {
@@ -1077,7 +1348,8 @@ function openAbout() { renderIconGrid(); showView('view-about'); }
 Object.assign(window, {
   goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
-  checkWeakLink, checkChainBuild, openAbout, beginReviewSession
+  checkWeakLink, checkChainBuild, openAbout, beginReviewSession, practiceAhead,
+  beginScenario, switchScenarioTier, checkScenarioByHeart
 });
 
-Promise.all([loadProgress(), loadStreak()]).then(loadHistory);
+Promise.all([loadProgress(), loadStreak(), loadNewCardState()]).then(loadHistory);

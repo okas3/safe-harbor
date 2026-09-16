@@ -260,3 +260,88 @@ export function getNewVerses(DATA) {
   });
   return list;
 }
+
+// New-card introduction pacing: caps how many never-seen verses get
+// exposed per day (dumping all 28 into rotation on day one defeats
+// the point of spacing them out) and interleaves across categories
+// so early coverage spans every theme instead of finishing one
+// category before starting the next.
+export const NEW_VERSES_PER_DAY = 5;
+
+const NEWCARDS_KEY = 'scripture-newcard-v1';
+let newcards = { date: null, refs: [] };
+let newcardsDb = null;
+
+export async function loadNewCardState() {
+  try {
+    newcardsDb = (typeof window !== 'undefined' && window.claude?.use) ? await window.claude.use('db') : null;
+    if (newcardsDb) {
+      const snap = await newcardsDb.doc('newcards/log').get();
+      newcards = snap.exists ? snap.data() : { date: null, refs: [] };
+    } else {
+      newcards = JSON.parse(localStorage.getItem(NEWCARDS_KEY) || 'null') || { date: null, refs: [] };
+    }
+  } catch (e) {
+    try { newcards = JSON.parse(localStorage.getItem(NEWCARDS_KEY) || 'null') || { date: null, refs: [] }; }
+    catch (e2) { newcards = { date: null, refs: [] }; }
+  }
+  return newcards;
+}
+
+async function saveNewCardState() {
+  try {
+    if (newcardsDb) await newcardsDb.doc('newcards/log').set(newcards);
+    else localStorage.setItem(NEWCARDS_KEY, JSON.stringify(newcards));
+  } catch (e) {}
+}
+
+// A verse is "introduced" the moment it's placed into a day's batch
+// (shown), not once actually attempted — gating on attempt would need
+// hooking into every mode's abandon path, and re-rolling the batch for
+// someone who opened a verse then left would reintroduce the exact
+// "fresh batch on every reload" problem this exists to prevent. It
+// only bounds how many new verses are exposed per day; a verse that
+// never actually gets practiced still has no dueDate and still shows
+// up via getNewVerses() on later days.
+export function getTodaysNewBatch(DATA) {
+  const todayKey = localDateKey(new Date());
+  if (newcards.date === todayKey) {
+    const chosen = [];
+    DATA.forEach(group => {
+      group.verses.forEach(v => {
+        if (newcards.refs.includes(v.ref)) chosen.push({ cat: group.cat, ref: v.ref });
+      });
+    });
+    return chosen;
+  }
+
+  const byCategory = DATA.map(group => ({
+    cat: group.cat,
+    refs: getNewVerses([group]).map(x => x.ref)
+  }));
+  const chosen = [];
+  let progressed = true;
+  while (chosen.length < NEW_VERSES_PER_DAY && progressed) {
+    progressed = false;
+    for (const cat of byCategory) {
+      if (chosen.length >= NEW_VERSES_PER_DAY) break;
+      const next = cat.refs.shift();
+      if (next) { chosen.push({ cat: cat.cat, ref: next }); progressed = true; }
+    }
+  }
+
+  newcards = { date: todayKey, refs: chosen.map(c => c.ref) };
+  saveNewCardState();
+  return chosen;
+}
+
+// The due-today home queue: genuinely-decaying reinforcement first
+// (the urgent part of spaced repetition), today's fresh-verse batch
+// appended after — one combined session instead of two screens.
+export function getDueTodayQueue(DATA) {
+  const due = getDueVerses(DATA);
+  const fresh = getTodaysNewBatch(DATA).map(({ cat, ref }) => ({
+    cat, ref, stage: 'new', overdueDays: null, suggested: suggestedModeForStage('new')
+  }));
+  return [...due, ...fresh];
+}

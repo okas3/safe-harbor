@@ -16,7 +16,8 @@ export const DATA = [
     { ref: "Lamentations 3:22-23", text: "The steadfast love of the Lord never ceases; his mercies never come to an end; they are new every morning; great is your faithfulness." },
     { ref: "Psalm 103:10-12", text: "He does not deal with us according to our sins, nor repay us according to our iniquities. For as high as the heavens are above the earth, so great is his steadfast love toward those who fear him; as far as the east is from the west, so far does he remove our transgressions from us." },
     { ref: "Ephesians 2:4-5", text: "But God, being rich in mercy, because of the great love with which he loved us, even when we were dead in our trespasses, made us alive together with Christ—by grace you have been saved—" },
-    { ref: "Titus 3:5", text: "he saved us, not because of works done by us in righteousness, but according to his own mercy, by the washing of regeneration and renewal of the Holy Spirit," }
+    { ref: "Titus 3:5", text: "he saved us, not because of works done by us in righteousness, but according to his own mercy, by the washing of regeneration and renewal of the Holy Spirit," },
+    { ref: "John 21:17", text: "PASTE ESV TEXT — John 21:17" }
   ]},
   { cat: "God's Power", verses: [
     { ref: "Jeremiah 32:17", text: "'Ah, Lord God! It is you who have made the heavens and the earth by your great power and by your outstretched arm! Nothing is too hard for you." },
@@ -41,5 +42,24 @@ export const DATA = [
     { ref: "Philippians 4:8", text: "Finally, brothers, whatever is true, whatever is honorable, whatever is just, whatever is pure, whatever is lovely, whatever is commendable, if there is any excellence, if there is anything worthy of praise, think about these things." },
     { ref: "2 Corinthians 10:5", text: "We destroy arguments and every lofty opinion raised against the knowledge of God, and take every thought captive to obey Christ," },
     { ref: "Colossians 3:2", text: "Set your minds on things that are above, not on things that are on earth." }
+  ]},
+  // Sourced from the scenario library (src/scenarios.js) rather than
+  // picked up front — new categories get added here organically as
+  // scenario-sourced verses don't fit any existing theme.
+  { cat: "Bearing One Another Up", verses: [
+    { ref: "Exodus 17:12", text: "But Moses' hands grew weary, so they took a stone and put it under him, and he sat on it, while Aaron and Hur held up his hands, one on one side, and the other on the other side. So his hands were steady until the going down of the sun." },
+    { ref: "Exodus 18:18", text: "You and the people with you will certainly wear yourselves out, for the thing is too heavy for you. You are not able to do it alone." }
+  ]},
+  { cat: "Your Own Calling", verses: [
+    { ref: "John 21:22", text: "Jesus said to him, \"If it is my will that he remain until I come, what is that to you? You follow me!\"" }
+  ]},
+  { cat: "Being Seen", verses: [
+    { ref: "Genesis 16:13", text: "So she called the name of the Lord who spoke to her, \"You are a God of seeing,\" for she said, \"Truly here I have seen him who looks after me.\"" }
+  ]},
+  { cat: "God's Provision", verses: [
+    { ref: "1 Kings 17:14", text: "For thus says the Lord, the God of Israel, 'The jar of flour shall not be spent, and the jug of oil shall not be empty, until the day that the Lord sends rain upon the earth.'" }
+  ]},
+  { cat: "Forgiveness", verses: [
+    { ref: "Genesis 50:20", text: "As for you, you meant evil against me, but God meant it for good, to bring it about that many people should be kept alive, as they are today." }
   ]}
 ];

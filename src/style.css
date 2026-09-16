@@ -125,6 +125,16 @@ h1 {
 }
 .verse-list-wrap.show-top-fade::before { opacity: 1; }
 .verse-list-wrap.show-bottom-fade::after { opacity: 1; }
+
+/* On a phone, a fixed-height nested scroll box eats the natural
+   "scroll the whole page" gesture whenever it starts inside it — at
+   58vh tall, that's most of the screen. Drop the inner scroll here
+   and let the verse cards flow with the page instead; the fade hints
+   only make sense for the box that's actually still scrolling. */
+@media (max-width: 480px) {
+  .verse-list { height: auto; overflow-y: visible; padding-right: 0; }
+  .verse-list-wrap::before, .verse-list-wrap::after { display: none; }
+}
 .verse-card {
   background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
   border-radius: 4px; padding: 14px 16px;
@@ -283,12 +293,12 @@ h1 {
   font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; text-transform: uppercase;
 }
 
-textarea#typeInput {
+textarea#typeInput, textarea#scenarioInput {
   width: 100%; min-height: 90px; background: var(--bg-deep); color: var(--ink);
   border: 1px solid var(--border); border-radius: 5px; padding: 12px;
   font-family: 'Instrument Sans', -apple-system, sans-serif; font-size: 17px; line-height: 1.5; resize: vertical;
 }
-textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
+textarea#typeInput:focus, textarea#scenarioInput:focus { outline: none; border-color: var(--brass-dim); }
 .diff-line { font-size: 18px; line-height: 1.7; margin-top: 10px; font-family: 'Instrument Sans', -apple-system, sans-serif; }
 .diff-line .ok { color: var(--sea); }
 .diff-line .miss { color: var(--rust); text-decoration: line-through; opacity: 0.75; }
@@ -334,12 +344,18 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
 .match-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .match-chip {
   background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
-  padding: 10px 12px; font-size: 13.5px; cursor: pointer; line-height: 1.4;
+  padding: 12px 14px; min-height: 44px; display: flex; align-items: center;
+  font-size: 13.5px; cursor: pointer; line-height: 1.4;
   font-family: 'Instrument Sans', -apple-system, sans-serif; transition: border-color 0.15s;
 }
 .match-chip:hover { border-color: var(--brass-dim); }
 .match-chip.selected { border-color: var(--brass); background: rgba(193,154,91,0.1); }
 .match-chip.matched { cursor: default; opacity: 0.65; }
+@keyframes hint-blink {
+  0%, 100% { border-color: var(--border); background: var(--surface); }
+  50% { border-color: var(--brass-bright); background: rgba(193,154,91,0.28); }
+}
+.match-chip.hint-blink { animation: hint-blink 0.5s ease-in-out 3; }
 .match-stats {
   text-align: center; font-size: 11.5px; color: var(--ink-faint); margin-bottom: 10px;
   font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;
@@ -392,3 +408,24 @@ textarea#typeInput:focus { outline: none; border-color: var(--brass-dim); }
   text-underline-offset: 2px;
 }
 .app-footer a:hover { color: var(--ink-dim); }
+
+.scenario-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.scenario-tab {
+  flex: 1; min-height: 44px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--ink-dim); font-size: 13px; cursor: pointer;
+  font-family: 'Instrument Sans', -apple-system, sans-serif; transition: border-color 0.15s, color 0.15s;
+}
+.scenario-tab:disabled { opacity: 0.4; cursor: not-allowed; }
+.scenario-tab.active { border-color: var(--brass); color: var(--brass-bright); background: rgba(193,154,91,0.1); }
+.scenario-card {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brass-dim);
+  border-radius: 4px; padding: 14px 16px; margin-bottom: 12px;
+}
+.scenario-situation, .scenario-situation-prompt { font-size: 15px; line-height: 1.6; color: var(--ink); }
+.scenario-situation-prompt { margin-bottom: 16px; }
+.scenario-connection { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.scenario-connection .scenario-ref, #scenarioResult .scenario-ref {
+  font-size: 12px; color: var(--brass); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+}
+.scenario-scene { font-size: 13.5px; line-height: 1.6; color: var(--ink-dim); margin-bottom: 6px; }
+.scenario-why { font-size: 12.5px; line-height: 1.5; color: var(--ink-faint); font-style: italic; }

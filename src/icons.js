@@ -60,6 +60,40 @@ export const CATEGORY_ICONS = {
     <line x1="19" y1="9" x2="17.4" y2="10.4"/>
     <path d="M2.5 17.5q2-2 4-0.2t4 0t4 -0.2t4 0.4"/>
     <path d="M2.5 20.5q2-2 4-0.2t4 0t4 -0.2t4 0.4"/>
+  `),
+  // Two braced supports holding a crossbar steady: Aaron and Hur
+  // holding up Moses' hands until sunset — support, not rescue.
+  "Bearing One Another Up": svg(`
+    <line x1="8" y1="8" x2="16" y2="8"/>
+    <line x1="12" y1="3" x2="12" y2="8"/>
+    <line x1="4" y1="21" x2="10.3" y2="8"/>
+    <line x1="20" y1="21" x2="13.7" y2="8"/>
+  `),
+  // A single heading arrow, not a fork: your own next step, not a
+  // comparison to someone else's path. "You follow me."
+  "Your Own Calling": svg(`
+    <line x1="12" y1="20" x2="12" y2="4.5"/>
+    <polyline points="7.5,9 12,4 16.5,9"/>
+  `),
+  // An open eye: Hagar naming God "El Roi" — the God who sees — in
+  // the one place she felt most invisible.
+  "Being Seen": svg(`
+    <path d="M3 12q4-6.5 9-6.5t9 6.5q-4 6.5-9 6.5T3 12Z"/>
+    <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
+  `),
+  // A jar that keeps giving: the widow's flour and oil, spent down
+  // and refilled a day at a time rather than all at once up front.
+  "God's Provision": svg(`
+    <path d="M9 3.5h6"/>
+    <path d="M10 3.5v3.2L7.5 10a4 4 0 0 0-1 2.6V19a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-6.4a4 4 0 0 0-1-2.6L14 6.7V3.5"/>
+    <line x1="7" y1="15" x2="17" y2="15"/>
+  `),
+  // Two hands, released rather than clenched: Joseph choosing not to
+  // let someone's wrong intent be the final word.
+  "Forgiveness": svg(`
+    <path d="M4 14q0-3 2.5-3c1.6 0 2 1 3.5 1s2-1.2 3-1.2 1.8 0.7 3 0.7c2 0 4 1 4 3.5"/>
+    <path d="M4 14v3a2 2 0 0 0 2 2h1"/>
+    <path d="M20 14v3a2 2 0 0 1-2 2h-1"/>
   `)
 };
 
