@@ -8,10 +8,18 @@ import { SCENARIOS, SCENARIO_MATCH_MIN } from './scenarios.js';
 
 document.getElementById('h1Mark').innerHTML = ANCHOR_ICON;
 
-// Local-storage-only app, no API to keep fresh — a cache-first
-// service worker is enough to make it open with no connection at all
-// once it's been visited once and installed to a home screen.
+// A network-first service worker keeps this current while online, but
+// a tab that's already open when a new one activates doesn't get the
+// new fetch behavior until it reloads — reload once, automatically,
+// the moment a new service worker actually takes control, rather than
+// leaving a visitor stuck looking at whatever loaded first today.
 if ('serviceWorker' in navigator) {
+  let reloadedForNewSW = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadedForNewSW) return;
+    reloadedForNewSW = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 }
 
