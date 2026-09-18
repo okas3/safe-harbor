@@ -33,6 +33,10 @@ export const CATEGORY_ICONS = {
   "God's Power": svg(`
     <polygon points="13,2.5 5,14 10.8,14 9,21.5 19,10 12.5,10" fill="currentColor" stroke="none"/>
   `),
+  // A pulse line: healing as restoration to life, not just relief.
+  "Healing": svg(`
+    <path d="M2.5 12h3.2l2-6.2 3.2 12.4 2.3-9 1.6 2.8h6.7"/>
+  `),
   // Ship's wheel: steering the conversation, hands on the helm.
   "Power of Prayer": svg(`
     <circle cx="12" cy="12" r="7.5"/>

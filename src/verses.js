@@ -22,8 +22,12 @@ export const DATA = [
   { cat: "God's Power", verses: [
     { ref: "Jeremiah 32:17", text: "'Ah, Lord God! It is you who have made the heavens and the earth by your great power and by your outstretched arm! Nothing is too hard for you." },
     { ref: "Ephesians 3:20", text: "Now to him who is able to do far more abundantly than all that we ask or think, according to the power at work within us," },
-    { ref: "Isaiah 40:29-31", text: "He gives power to the faint, and to him who has no might he increases strength. Even youths shall faint and be weary, and young men shall fall exhausted; but they who wait for the Lord shall renew their strength; they shall mount up with wings like eagles; they shall run and not be weary; they shall walk and not faint." },
-    { ref: "2 Corinthians 12:9", text: "But he said to me, \"My grace is sufficient for you, for my power is made perfect in weakness.\" Therefore I will boast all the more gladly of my weaknesses, so that the power of Christ may rest upon me." }
+    { ref: "Isaiah 40:29-31", text: "He gives power to the faint, and to him who has no might he increases strength. Even youths shall faint and be weary, and young men shall fall exhausted; but they who wait for the Lord shall renew their strength; they shall mount up with wings like eagles; they shall run and not be weary; they shall walk and not faint." }
+  ]},
+  { cat: "Healing", verses: [
+    { ref: "James 5:14-16", text: "Is anyone among you sick? Let him call for the elders of the church, and let them pray over him, anointing him with oil in the name of the Lord. And the prayer of faith will save the one who is sick, and the Lord will raise him up. And if he has committed sins, he will be forgiven. Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working." },
+    { ref: "2 Corinthians 12:9", text: "But he said to me, \"My grace is sufficient for you, for my power is made perfect in weakness.\" Therefore I will boast all the more gladly of my weaknesses, so that the power of Christ may rest upon me." },
+    { ref: "Exodus 15:26", text: "saying, \"If you will diligently listen to the voice of the Lord your God, and do that which is right in his eyes, and give ear to his commandments and keep all his statutes, I will put none of the diseases on you that I put on the Egyptians, for I am the Lord, your healer.\"" }
   ]},
   { cat: "Power of Prayer", verses: [
     { ref: "James 5:16", text: "Therefore, confess your sins to one another and pray for one another, that you may be healed. The prayer of a righteous person has great power as it is working." },

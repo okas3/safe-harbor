@@ -1310,6 +1310,7 @@ const ICON_MEANINGS = {
   "Our Unrighteousness": { icon: 'Storm cloud', meaning: 'the weight and fallout of sin' },
   "God's Mercy": { icon: 'Lighthouse', meaning: 'the light held out to something wrecked' },
   "God's Power": { icon: 'Lightning', meaning: '' },
+  "Healing": { icon: 'Pulse line', meaning: 'restoration to life, not just relief' },
   "Power of Prayer": { icon: "Ship's wheel", meaning: 'hands actually on the helm' },
   "Power of Faith": { icon: 'Sail', meaning: 'substance made visible only by what it moves' },
   "Renewal of the Mind": { icon: 'Sunrise', meaning: '' },
