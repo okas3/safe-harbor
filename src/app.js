@@ -426,9 +426,14 @@ function showStage(name, title) {
   // verse's real category) would be stale/misleading here specifically.
   // Situations and ambient prompts aren't scoped to one category
   // either — same reasoning.
-  const scenarioScore = name === 'scoreArea' && state.mode === 'scenario';
+  // A multi-verse due-today session (state.stepConfigs) spans whatever
+  // mix of categories was actually due — same staleness as above,
+  // just surfacing on the score screen instead of the queue itself.
+  // A single-verse review (startReviewItem) doesn't set stepConfigs,
+  // so its score screen keeps a real, correct single-category header.
+  const crossCategoryScore = name === 'scoreArea' && (state.mode === 'scenario' || state.stepConfigs);
   const crossCategoryStage = name === 'scenarioArea' || name === 'ambientArea';
-  document.getElementById('catHeader').style.display = (isHome || crossCategoryStage || scenarioScore) ? 'none' : '';
+  document.getElementById('catHeader').style.display = (isHome || crossCategoryStage || crossCategoryScore) ? 'none' : '';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
 
   // Live-counting timer, running only while a round is actually in
@@ -572,7 +577,7 @@ function beginSession(verses) {
 
   if (!state.stepConfigs && state.mode === 'match') { beginMatch(); return; }
 
-  const title = state.stepConfigs ? 'Review' : roundTitle(state.mode, state.difficulty);
+  const title = state.stepConfigs ? "Today's Session" : roundTitle(state.mode, state.difficulty);
   showStage('practiceArea', title);
   showStep();
 }
@@ -1320,7 +1325,11 @@ function showScoreScreen(score, timeSec, results, extraStats) {
   // replaySession() would just re-run whatever category session ran
   // before this, which isn't what "Play Again" should mean here.
   document.getElementById('playAgainBtn').style.display = crossCategory ? 'none' : 'block';
-  const title = state.stepConfigs ? 'Review' : state.mode === 'scenario' ? 'Situations' : roundTitle(state.mode, state.difficulty);
+  // "Review" would collide with the Review button just below (the
+  // per-verse pass/fail breakdown toggle) — different things, same
+  // word, so this uses the same "Today's Session" label the queue
+  // and the live session screen already use.
+  const title = state.stepConfigs ? "Today's Session" : state.mode === 'scenario' ? 'Situations' : roundTitle(state.mode, state.difficulty);
   showStage('scoreArea', title);
 }
 function toggleReview() {
