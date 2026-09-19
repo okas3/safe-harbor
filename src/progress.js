@@ -21,7 +21,8 @@ function defaultEntry() {
     lastReviewed: null,
     reps: 0,
     lapses: 0,
-    wordMisses: {}
+    wordMisses: {},
+    scenarioVisited: false
   };
 }
 
@@ -70,6 +71,27 @@ export function recordRecognition(ref) {
   if (e.stage === 'new') e.stage = 'recognized';
   saveProgress();
   return e;
+}
+
+// Distinct from recordRecognition — this specifically means "played
+// this verse's scenario as a quiz," not "recognized it in a normal
+// drill mode." Only a completed Situations Match round should call
+// this; Dead Reckoning/Safe Harbor never should.
+export function markScenarioVisited(ref) {
+  const e = entryFor(ref);
+  if (!e.scenarioVisited) {
+    e.scenarioVisited = true;
+    saveProgress();
+  }
+}
+
+// The single source of truth for what ambient scenario prompts are
+// allowed to draw from — a verse with real SM-2 progress (learned)
+// or one encountered via a completed scenario quiz (visited). Either
+// is enough; this is deliberately an OR, not a stricter AND.
+export function isLearnedOrVisited(ref) {
+  const e = getProgress(ref);
+  return !!e.dueDate || !!e.scenarioVisited;
 }
 
 // `depth` distinguishes the two recall-mode grading paths: checkFade()
@@ -344,4 +366,51 @@ export function getDueTodayQueue(DATA) {
     cat, ref, stage: 'new', overdueDays: null, suggested: suggestedModeForStage('new')
   }));
   return [...due, ...fresh];
+}
+
+// Ambient scenario prompts: at most one per day, and not a repeat of
+// whichever situation was shown last — the actual eligibility check
+// (learned-or-visited) lives in isLearnedOrVisited() above; this file
+// only tracks the pacing/no-immediate-repeat state, since picking a
+// situation itself needs scenarios.js data this module doesn't import.
+const AMBIENT_KEY = 'scripture-ambient-v1';
+let ambient = { date: null, lastSituation: null };
+let ambientDb = null;
+
+export async function loadAmbientState() {
+  try {
+    ambientDb = (typeof window !== 'undefined' && window.claude?.use) ? await window.claude.use('db') : null;
+    if (ambientDb) {
+      const snap = await ambientDb.doc('ambient/log').get();
+      ambient = snap.exists ? snap.data() : { date: null, lastSituation: null };
+    } else {
+      ambient = JSON.parse(localStorage.getItem(AMBIENT_KEY) || 'null') || { date: null, lastSituation: null };
+    }
+  } catch (e) {
+    try { ambient = JSON.parse(localStorage.getItem(AMBIENT_KEY) || 'null') || { date: null, lastSituation: null }; }
+    catch (e2) { ambient = { date: null, lastSituation: null }; }
+  }
+  return ambient;
+}
+
+async function saveAmbientState() {
+  try {
+    if (ambientDb) await ambientDb.doc('ambient/log').set(ambient);
+    else localStorage.setItem(AMBIENT_KEY, JSON.stringify(ambient));
+  } catch (e) {}
+}
+
+// True once today's ambient prompt has already been shown — the
+// selection algorithm in app.js checks this before doing any picking.
+export function ambientAlreadyShownToday() {
+  return ambient.date === localDateKey(new Date());
+}
+
+export function getLastAmbientSituation() {
+  return ambient.lastSituation;
+}
+
+export function recordAmbientShown(situationKey) {
+  ambient = { date: localDateKey(new Date()), lastSituation: situationKey };
+  saveAmbientState();
 }

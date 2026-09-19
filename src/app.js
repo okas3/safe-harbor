@@ -2,7 +2,7 @@ import './style.css';
 import { DATA } from './verses.js';
 import { FADE_DIFFS, LETTER_DIFFS, MATCH_DIFFS, REVERSE_DIFFS, SCENARIO_DIFFS } from './difficulties.js';
 import { CATEGORY_ICONS, ANCHOR_ICON } from './icons.js';
-import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getDueTodayQueue, loadNewCardState, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak } from './progress.js';
+import { loadProgress, recordRecognition, recordRecall, recordWordMisses, resolveWordMiss, getProgress, getDueVerses, getDueTodayQueue, loadNewCardState, suggestedModeForStage, PASS_THRESHOLD, loadStreak, recordActivity, getStreak, markScenarioVisited, isLearnedOrVisited, loadAmbientState, ambientAlreadyShownToday, getLastAmbientSituation, recordAmbientShown } from './progress.js';
 import { chunkVerse } from './chunking.js';
 import { SCENARIOS, SCENARIO_MATCH_MIN } from './scenarios.js';
 
@@ -341,6 +341,14 @@ function openReview() {
     el.onclick = () => startReviewItem(atRisk[i]);
   });
   reviewQueue = queue;
+  // Nothing to lead with today — this is where an ambient prompt gets
+  // its chance, drawn only from scripture already learned or visited.
+  // pickAmbientScenario() is itself once-per-day-safe, so calling it
+  // here on every empty-queue visit (not just the first) is fine.
+  if (!queue.length) {
+    const prompt = pickAmbientScenario();
+    if (prompt) { renderAmbientStage(prompt); return; }
+  }
   showStage('reviewArea', queue.length ? `${queue.length} in Today's Session` : "Today's Session");
 }
 
@@ -406,7 +414,7 @@ function goHome() { renderHome(); showView('view-home'); cancelSession(); }
 // no back button and no category/mode picker of its own.
 // verseList ("Practice Ahead," manually browsing a category) and the
 // three active-session UIs all have a way back to it.
-const STAGES = ['verseList', 'reviewArea', 'practiceArea', 'matchArea', 'scoreArea', 'scenarioArea'];
+const STAGES = ['verseList', 'reviewArea', 'practiceArea', 'matchArea', 'scoreArea', 'scenarioArea', 'ambientArea'];
 function showStage(name, title) {
   STAGES.forEach(id => { document.getElementById(id).style.display = (id === name) ? '' : 'none'; });
   const isHome = name === 'reviewArea';
@@ -416,9 +424,11 @@ function showStage(name, title) {
   // header (correct for every other stage, including review-launched
   // single-verse sessions — startReviewItem() sets state.cat to that
   // verse's real category) would be stale/misleading here specifically.
-  // Situations aren't scoped to one category either — same reasoning.
+  // Situations and ambient prompts aren't scoped to one category
+  // either — same reasoning.
   const scenarioScore = name === 'scoreArea' && state.mode === 'scenario';
-  document.getElementById('catHeader').style.display = (isHome || name === 'scenarioArea' || scenarioScore) ? 'none' : '';
+  const crossCategoryStage = name === 'scenarioArea' || name === 'ambientArea';
+  document.getElementById('catHeader').style.display = (isHome || crossCategoryStage || scenarioScore) ? 'none' : '';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
 
   // Live-counting timer, running only while a round is actually in
@@ -468,6 +478,23 @@ function cancelSession() {
   // from. renderHome() still refreshes the (now-hidden) category
   // picker so it's not stale next time Practice Ahead is opened.
   renderHome();
+  goHomeAfterSession();
+}
+
+// A due-today session that just finished may have queued up an
+// ambient prompt (see finishSession()) — show that once instead of
+// going straight home. Every other "back to today" path (a normal
+// category session, Situations, or nothing pending) falls through to
+// the plain openReview(), which still runs its own empty-queue
+// ambient check independently.
+let pendingAmbientPrompt = null;
+function goHomeAfterSession() {
+  if (pendingAmbientPrompt) {
+    const prompt = pendingAmbientPrompt;
+    pendingAmbientPrompt = null;
+    renderAmbientStage(prompt);
+    return;
+  }
   openReview();
 }
 
@@ -1001,6 +1028,65 @@ function finishMatch() {
   ]);
 }
 
+// Ambient prompts draw only from the learned-or-visited pool, unlike
+// Situations' own Preview/Match which are unrestricted — lives here
+// rather than progress.js since it needs SCENARIOS (scenarios.js)
+// alongside progress state, and neither of those modules imports the
+// other. Returns null when nothing's eligible yet or today's prompt
+// has already been shown.
+function pickAmbientScenario() {
+  if (ambientAlreadyShownToday()) return null;
+
+  const eligible = SCENARIOS
+    .map(s => ({ situation: s, connections: s.connections.filter(c => isLearnedOrVisited(c.ref)) }))
+    .filter(s => s.connections.length > 0);
+  if (!eligible.length) return null;
+
+  const lastSituation = getLastAmbientSituation();
+  const preferred = eligible.filter(s => s.situation.situation !== lastSituation);
+  const pool = preferred.length ? preferred : eligible;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  const connection = picked.connections[Math.floor(Math.random() * picked.connections.length)];
+
+  recordAmbientShown(picked.situation.situation);
+  return { situation: picked.situation, connection };
+}
+
+// Tap-to-reveal only — no scoring, no recordRecall/recordRecognition.
+// This is reinforcement for scripture already learned or visited, not
+// another test of it; keeping it inert is what keeps the SM-2
+// schedule's retention signal free of scenario context.
+let ambientPrompt = null;
+function renderAmbientStage(prompt) {
+  ambientPrompt = prompt;
+  document.getElementById('ambientBody').innerHTML = `
+    <div class="scenario-card">
+      <div class="scenario-situation">${prompt.situation.situation}</div>
+      <div id="ambientReveal"></div>
+    </div>
+    <div class="rate-row" id="ambientRateRow"><button class="action-btn" onclick="revealAmbient()">Reveal</button></div>
+  `;
+  showStage('ambientArea', 'Worth Remembering');
+}
+function revealAmbient() {
+  const btn = document.getElementById('ambientRateRow');
+  if (btn.dataset.revealed === '1') {
+    ambientPrompt = null;
+    openReview();
+    return;
+  }
+  const c = ambientPrompt.connection;
+  document.getElementById('ambientReveal').innerHTML = `
+    <div class="scenario-connection">
+      <div class="scenario-ref">${c.ref}</div>
+      <div class="scenario-scene">${c.scene}</div>
+      <div class="scenario-why">${c.whyAnalogical}</div>
+    </div>
+  `;
+  btn.dataset.revealed = '1';
+  btn.innerHTML = `<button class="action-btn" onclick="revealAmbient()">Continue</button>`;
+}
+
 // Situations aren't scoped to one category (a situation's connection
 // can point anywhere in the verse bank), so this is a separate entry
 // point rather than another item in the category-picker's mode
@@ -1130,8 +1216,14 @@ function finishScenarioMatch() {
   const timeSec = Math.round((Date.now() - m.startTime) / 1000);
   const score = Math.round((m.total / (m.total + m.mistakes)) * 100);
   // Matching is recognition, not recall — same standing as Safe
-  // Harbor's finishMatch(), never touches the SM-2 schedule.
-  SCENARIOS.forEach(s => recordRecognition(s.connections[0].ref));
+  // Harbor's finishMatch(), never touches the SM-2 schedule. Completing
+  // this round is also exactly what "played a scenario as a quiz"
+  // means — mark each drilled verse visited so it enters the pool
+  // ambient prompts draw from.
+  SCENARIOS.forEach(s => {
+    recordRecognition(s.connections[0].ref);
+    markScenarioVisited(s.connections[0].ref);
+  });
   logAttempt('Situations', 'scenario', SCENARIO_DIFFS[1].name, score, timeSec);
   recordActivity();
   scenarioState.match = null;
@@ -1154,6 +1246,11 @@ function finishSession() {
   // straight single-mode practice sessions.
   if (!state.stepConfigs) logAttempt(state.cat, state.mode, state.difficulty ? state.difficulty.name : '', avg, timeSec);
   recordActivity();
+  // Only a due-today session (not a normal category practice run)
+  // gets a chance at an ambient prompt afterward — picked now, shown
+  // once the user actually leaves the score screen (see
+  // goHomeAfterSession()), never mixed into the session itself.
+  if (state.isReviewSession) pendingAmbientPrompt = pickAmbientScenario();
   showScoreScreen(avg, timeSec, state.results, [{ label: 'Verses', value: state.results.length }]);
   state.stepConfigs = undefined;
 }
@@ -1303,7 +1400,7 @@ Object.assign(window, {
   goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
   checkWeakLink, checkChainBuild, openAbout, beginReviewSession, practiceAhead,
-  beginScenario, switchScenarioTier
+  beginScenario, switchScenarioTier, revealAmbient, goHomeAfterSession
 });
 
-Promise.all([loadProgress(), loadStreak(), loadNewCardState()]).then(loadHistory);
+Promise.all([loadProgress(), loadStreak(), loadNewCardState(), loadAmbientState()]).then(loadHistory);
