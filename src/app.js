@@ -561,7 +561,10 @@ function alignWords(actualWords, typedWords) {
 }
 
 function beginSession(verses) {
-  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty, verses };
+  // stepConfigs travels with lastConfig too — a due-today session's
+  // "Play Again" needs each verse's own per-item mode/difficulty back,
+  // not just one mode reapplied to the whole mixed set.
+  state.lastConfig = { cat: state.cat, mode: state.mode, difficulty: state.difficulty, verses, stepConfigs: state.stepConfigs };
   const group = DATA.find(g => g.cat === state.cat);
   let sessionVerses = verses || group.verses.slice();
   if (state.mode === 'weaklink' && !verses) {
@@ -586,6 +589,7 @@ function replaySession() {
   state.cat = state.lastConfig.cat;
   state.mode = state.lastConfig.mode;
   state.difficulty = state.lastConfig.difficulty;
+  state.stepConfigs = state.lastConfig.stepConfigs;
   beginSession(state.lastConfig.verses);
 }
 
@@ -1319,12 +1323,12 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     scoreHistory.innerHTML = leaderboardMarkup(5, state.cat, modeLabel(state.mode), state.difficulty ? state.difficulty.name : '');
   }
   document.getElementById('nextDueBtn').style.display = state.isReviewSession ? 'block' : 'none';
-  // A flowing review session's queue isn't a single cat/mode/difficulty
-  // config replaySession() can reconstruct — "Next Due Verse" is
-  // already the sensible restart action here. Same for Situations —
-  // replaySession() would just re-run whatever category session ran
-  // before this, which isn't what "Play Again" should mean here.
-  document.getElementById('playAgainBtn').style.display = crossCategory ? 'none' : 'block';
+  // replaySession() now carries stepConfigs along with it, so a
+  // due-today session's "Play Again" correctly re-runs each verse in
+  // its own suggested mode rather than one mode for the whole mixed
+  // set — only Situations genuinely can't replay through this path,
+  // since it uses its own scenarioState, not state.sessionVerses.
+  document.getElementById('playAgainBtn').style.display = state.mode === 'scenario' ? 'none' : 'block';
   // "Review" would collide with the Review button just below (the
   // per-verse pass/fail breakdown toggle) — different things, same
   // word, so this uses the same "Today's Session" label the queue
