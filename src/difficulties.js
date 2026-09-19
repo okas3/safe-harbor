@@ -24,11 +24,11 @@ const ONE_CATEGORY_DIFFS = [
 export const MATCH_DIFFS = ONE_CATEGORY_DIFFS;
 export const REVERSE_DIFFS = ONE_CATEGORY_DIFFS;
 
-// Preview and Match are recognition-only; By Heart is the deliberately
-// hard, opt-in free-recall tier — never the entry point into a new
-// situation.
+// Situations are recognition-only (build the connection, not drill
+// the exact text) — free-recall word-for-word memorization already
+// happens through the normal verse modes once a scenario-sourced
+// verse is in the bank, so there's no separate By Heart tier here.
 export const SCENARIO_DIFFS = [
   { id: 'preview', name: 'Preview (See the Connection)', short: 'Preview' },
-  { id: 'match', name: 'Match (Tap to Pair)', short: 'Match' },
-  { id: 'byheart', name: 'By Heart (Free Recall)', short: 'By Heart' }
+  { id: 'match', name: 'Match (Tap to Pair)', short: 'Match' }
 ];

@@ -1007,7 +1007,7 @@ function finishMatch() {
 // select — see suggestScenarioTier()/showStage's isHome handling.
 let scenarioState = null;
 function beginScenario() {
-  scenarioState = { tier: 'preview', idx: 0, results: [], startTime: Date.now(), match: null };
+  scenarioState = { tier: 'preview', match: null };
   renderScenarioTabs();
   renderScenarioTier();
   showStage('scenarioArea', 'Situations');
@@ -1021,16 +1021,13 @@ function renderScenarioTabs() {
 }
 function switchScenarioTier(tier) {
   scenarioState.tier = tier;
-  scenarioState.idx = 0;
-  scenarioState.results = [];
   scenarioState.match = null;
   renderScenarioTabs();
   renderScenarioTier();
 }
 function renderScenarioTier() {
   if (scenarioState.tier === 'preview') renderScenarioPreview();
-  else if (scenarioState.tier === 'match') renderScenarioMatch();
-  else renderScenarioByHeart();
+  else renderScenarioMatch();
 }
 
 // Pure exposure — every situation, its connection(s), the scene, and
@@ -1147,58 +1144,6 @@ function finishScenarioMatch() {
     { label: 'Pairs', value: m.total },
     { label: 'Misses', value: m.mistakes }
   ]);
-}
-
-// The deliberately hard, opt-in tier — a situation with no options,
-// free recall of the actual verse text. Reuses checkType's grading
-// helper since the mechanics are identical with a different cue.
-function renderScenarioByHeart() {
-  const s = SCENARIOS[scenarioState.idx];
-  document.getElementById('scenarioBody').innerHTML = `
-    <div class="progress-line">Situation ${scenarioState.idx + 1} of ${SCENARIOS.length}</div>
-    <div class="scenario-situation-prompt">${s.situation}</div>
-    <textarea id="scenarioInput" placeholder="What does the scripture say?" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
-    <div id="scenarioResult"></div>
-    <div class="rate-row" id="scenarioRateRow"><button class="action-btn" onclick="checkScenarioByHeart()">Check</button></div>
-  `;
-}
-function checkScenarioByHeart() {
-  const btn = document.getElementById('scenarioRateRow');
-  if (btn.dataset.checked === '1') {
-    btn.dataset.checked = '';
-    scenarioState.idx++;
-    if (scenarioState.idx >= SCENARIOS.length) { finishScenarioByHeart(); return; }
-    renderScenarioByHeart();
-    return;
-  }
-  const s = SCENARIOS[scenarioState.idx];
-  const primary = s.connections[0];
-  const group = DATA.find(g => g.verses.some(v => v.ref === primary.ref));
-  const v = group.verses.find(x => x.ref === primary.ref);
-  const { pct, diffHtml, missed } = gradeFreeRecall(v.text, document.getElementById('scenarioInput').value);
-  document.getElementById('scenarioResult').innerHTML = `
-    <div class="score-line">${pct}% word match</div>
-    <div class="diff-line">${diffHtml}</div>
-    <div class="scenario-connection">
-      <div class="scenario-ref">${primary.ref}</div>
-      <div class="scenario-scene">${primary.scene}</div>
-      <div class="scenario-why">${primary.whyAnalogical}</div>
-    </div>
-  `;
-  scenarioState.results.push({ ref: primary.ref, score: pct, detail: `${pct}% word match`, depth: 'free' });
-  recordRecall(primary.ref, pct, 'free');
-  recordWordMisses(primary.ref, missed);
-  logAttempt(group.cat, 'scenario', SCENARIO_DIFFS[2].name, pct, Math.round((Date.now() - scenarioState.startTime) / 1000));
-  recordActivity();
-  btn.dataset.checked = '1';
-  const isLast = scenarioState.idx + 1 >= SCENARIOS.length;
-  btn.innerHTML = `<button class="action-btn" onclick="checkScenarioByHeart()">${isLast ? 'Finish' : 'Next Situation'}</button>`;
-}
-function finishScenarioByHeart() {
-  const avg = Math.round(scenarioState.results.reduce((sum, r) => sum + r.score, 0) / scenarioState.results.length);
-  const timeSec = Math.round((Date.now() - scenarioState.startTime) / 1000);
-  state.mode = 'scenario'; state.difficulty = null; state.stepConfigs = undefined; state.isReviewSession = false;
-  showScoreScreen(avg, timeSec, scenarioState.results, [{ label: 'Situations', value: scenarioState.results.length }]);
 }
 
 function finishSession() {
@@ -1358,7 +1303,7 @@ Object.assign(window, {
   goHome, showView, replaySession, toggleReview,
   checkFade, nextStep, checkType, startPractice, cancelSession, openReview,
   checkWeakLink, checkChainBuild, openAbout, beginReviewSession, practiceAhead,
-  beginScenario, switchScenarioTier, checkScenarioByHeart
+  beginScenario, switchScenarioTier
 });
 
 Promise.all([loadProgress(), loadStreak(), loadNewCardState()]).then(loadHistory);
