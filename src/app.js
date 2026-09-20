@@ -1328,7 +1328,13 @@ function showScoreScreen(score, timeSec, results, extraStats) {
   // its own suggested mode rather than one mode for the whole mixed
   // set — only Situations genuinely can't replay through this path,
   // since it uses its own scenarioState, not state.sessionVerses.
-  document.getElementById('playAgainBtn').style.display = state.mode === 'scenario' ? 'none' : 'block';
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  playAgainBtn.style.display = state.mode === 'scenario' ? 'none' : 'block';
+  // Two stacked gold "primary" buttons read as no hierarchy at all.
+  // "Back to Today" is the natural default when it's shown; Play
+  // Again demotes to secondary alongside it. When it's the only
+  // action (a normal category session), Play Again is the primary.
+  playAgainBtn.classList.toggle('primary', !state.isReviewSession);
   // "Review" would collide with the Review button just below (the
   // per-verse pass/fail breakdown toggle) — different things, same
   // word, so this uses the same "Today's Session" label the queue
