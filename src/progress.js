@@ -362,9 +362,19 @@ export function getTodaysNewBatch(DATA) {
 // appended after — one combined session instead of two screens.
 export function getDueTodayQueue(DATA) {
   const due = getDueVerses(DATA);
-  const fresh = getTodaysNewBatch(DATA).map(({ cat, ref }) => ({
-    cat, ref, stage: 'new', overdueDays: null, suggested: suggestedModeForStage('new')
-  }));
+  // getTodaysNewBatch() intentionally keeps returning the same fixed
+  // refs all day (that's what makes the batch stable across reloads)
+  // — but a verse that's already been through today's Dead Reckoning
+  // round has its stage flipped from 'new' to 'recognized' regardless
+  // of whether it ever earns a dueDate (recognition modes never set
+  // one), so that's the signal for "already done today," not dueDate.
+  // Without this filter, a completed batch kept reappearing as if
+  // nothing had happened.
+  const fresh = getTodaysNewBatch(DATA)
+    .filter(({ ref }) => getProgress(ref).stage === 'new')
+    .map(({ cat, ref }) => ({
+      cat, ref, stage: 'new', overdueDays: null, suggested: suggestedModeForStage('new')
+    }));
   return [...due, ...fresh];
 }
 
