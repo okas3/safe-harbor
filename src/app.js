@@ -1322,19 +1322,15 @@ function showScoreScreen(score, timeSec, results, extraStats) {
     if (scoreHistoryLabel) scoreHistoryLabel.style.display = '';
     scoreHistory.innerHTML = leaderboardMarkup(5, state.cat, modeLabel(state.mode), state.difficulty ? state.difficulty.name : '');
   }
-  document.getElementById('nextDueBtn').style.display = state.isReviewSession ? 'block' : 'none';
-  // replaySession() now carries stepConfigs along with it, so a
-  // due-today session's "Play Again" correctly re-runs each verse in
-  // its own suggested mode rather than one mode for the whole mixed
-  // set — only Situations genuinely can't replay through this path,
-  // since it uses its own scenarioState, not state.sessionVerses.
-  const playAgainBtn = document.getElementById('playAgainBtn');
-  playAgainBtn.style.display = state.mode === 'scenario' ? 'none' : 'block';
-  // Two stacked gold "primary" buttons read as no hierarchy at all.
-  // "Back to Today" is the natural default when it's shown; Play
-  // Again demotes to secondary alongside it. When it's the only
-  // action (a normal category session), Play Again is the primary.
-  playAgainBtn.classList.toggle('primary', !state.isReviewSession);
+  // The header's "← Back to Today" already goes home from any stage —
+  // a second, redundant "back home" button here added nothing. Play
+  // Again is the only real action this screen needs to offer, so it's
+  // always primary when shown. replaySession() carries stepConfigs
+  // along with it now, so it correctly re-runs a due-today session's
+  // mixed set in each verse's own mode, not one mode for all of them —
+  // only Situations genuinely can't replay through this path, since it
+  // uses its own scenarioState, not state.sessionVerses.
+  document.getElementById('playAgainBtn').style.display = state.mode === 'scenario' ? 'none' : 'block';
   // "Review" would collide with the Review button just below (the
   // per-verse pass/fail breakdown toggle) — different things, same
   // word, so this uses the same "Today's Session" label the queue
