@@ -428,12 +428,20 @@ function showStage(name, title) {
   // either — same reasoning.
   // A multi-verse due-today session (state.stepConfigs) spans whatever
   // mix of categories was actually due — same staleness as above,
-  // just surfacing on the score screen instead of the queue itself.
+  // just surfacing on the score screen instead of the queue itself —
+  // and the live session screen itself has the exact same problem:
+  // state.cat correctly updates per-verse behind the scenes (showStep()
+  // sets it from stepConfigs for logging/mode purposes), but catHeader's
+  // DOM content is only ever written by renderHome(), before the
+  // session starts, so it silently goes stale the moment the session
+  // crosses into a second category — it doesn't track step-to-step.
   // A single-verse review (startReviewItem) doesn't set stepConfigs,
-  // so its score screen keeps a real, correct single-category header.
-  const crossCategoryScore = name === 'scoreArea' && (state.mode === 'scenario' || state.stepConfigs);
+  // so its practiceArea/scoreArea keep a real, correct single-category
+  // header.
+  const crossCategorySession = (name === 'practiceArea' || name === 'scoreArea') && !!state.stepConfigs;
+  const scenarioScore = name === 'scoreArea' && state.mode === 'scenario';
   const crossCategoryStage = name === 'scenarioArea' || name === 'ambientArea';
-  document.getElementById('catHeader').style.display = (isHome || crossCategoryStage || crossCategoryScore) ? 'none' : '';
+  document.getElementById('catHeader').style.display = (isHome || crossCategoryStage || crossCategorySession || scenarioScore) ? 'none' : '';
   if (title !== undefined) document.getElementById('stageTitle').textContent = title;
 
   // Live-counting timer, running only while a round is actually in
